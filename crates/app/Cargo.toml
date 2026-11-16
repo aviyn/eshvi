@@ -1,0 +1,67 @@
+[package]
+name = "app"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "eshvi"
+path = "src/main.rs"
+
+[dependencies]
+grid.workspace = true
+term.workspace = true
+nvim-bridge.workspace = true
+anyhow.workspace = true
+log.workspace = true
+env_logger.workspace = true
+eframe.workspace = true
+egui.workspace = true
+png.workspace = true
+egui_commonmark.workspace = true
+# Images in Markdown previews: egui's loaders for local files (no http),
+# raster and SVG (egui_commonmark's versions).
+egui_extras = { version = "0.37", default-features = false, features = ["file", "image", "svg", "gif", "webp"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+# Markdown previews: blocks and their source lines (egui_commonmark's version).
+pulldown-cmark = { version = "0.13", default-features = false }
+# Code in LSP popups (the features egui_commonmark already builds).
+syntect = { version = "5.3", default-features = false, features = ["default-fancy"] }
+fontique.workspace = true
+serde.workspace = true
+toml.workspace = true
+resvg.workspace = true
+serde_json.workspace = true
+ignore.workspace = true
+# The picker's fuzzy ranking (`picker/rank.rs`).
+nucleo-matcher.workspace = true
+# The picker's grep (`picker/grep.rs`): ripgrep's libraries, in process.
+grep-searcher.workspace = true
+grep-regex.workspace = true
+grep-matcher.workspace = true
+notify.workspace = true
+trash.workspace = true
+rfd.workspace = true
+# Clipboard text for Edit › Paste into a GUI text field.
+arboard.workspace = true
+chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+similar = "3.2.1"
+
+[target.'cfg(unix)'.dependencies]
+# A rename that fails when the target exists (`renamex_np`, `renameat2`).
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# The native menu bar (NSMenu).
+muda = "0.21"
+# The window's NSView, for right-click menus (eframe's own version).
+raw-window-handle = "0.6"
+# Where the traffic-light buttons are (muda's versions).
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSGeometry"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSResponder", "NSView", "NSWindow", "NSControl", "NSButton"] }
+
+[dev-dependencies]
+# Screenshot tests of the chrome (`style::tests`; `UPDATE_SNAPSHOTS=1
+# cargo test` writes new ones to tests/snapshots).
+egui_kittest = { version = "0.37", features = ["wgpu", "snapshot"] }

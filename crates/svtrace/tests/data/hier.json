@@ -1,0 +1,1451 @@
+{
+  "design": {
+    "name": "$root",
+    "kind": "Root",
+    "addr": 2598992943840,
+    "members": [
+      {
+        "name": "",
+        "kind": "CompilationUnit",
+        "addr": 2599002071504,
+        "members": [
+          {
+            "name": "hp",
+            "kind": "Package",
+            "source_file": "hier.sv",
+            "source_line": 2,
+            "source_column": 9,
+            "addr": 2599002071776,
+            "members": [
+              {
+                "name": "mode_e",
+                "kind": "EnumType",
+                "source_file": "hier.sv",
+                "source_line": 3,
+                "source_column": 13,
+                "addr": 2599002075728,
+                "members": [
+                  {
+                    "name": "A",
+                    "kind": "EnumValue",
+                    "source_file": "hier.sv",
+                    "source_line": 3,
+                    "source_column": 32,
+                    "addr": 2599002075872,
+                    "value": "2'b0"
+                  },
+                  {
+                    "name": "B",
+                    "kind": "EnumValue",
+                    "source_file": "hier.sv",
+                    "source_line": 3,
+                    "source_column": 35,
+                    "addr": 2599002076080,
+                    "value": "2'b1"
+                  },
+                  {
+                    "name": "C",
+                    "kind": "EnumValue",
+                    "source_file": "hier.sv",
+                    "source_line": 3,
+                    "source_column": 38,
+                    "addr": 2599002076288,
+                    "value": "2'b10"
+                  }
+                ],
+                "baseType": {
+                  "name": "",
+                  "kind": "PackedArrayType",
+                  "addr": 2599002075640,
+                  "elementType": {
+                    "name": "logic",
+                    "kind": "ScalarType",
+                    "addr": 4314939112,
+                    "isSigned": false
+                  },
+                  "range": "[1:0]"
+                }
+              },
+              {
+                "name": "mode_e",
+                "kind": "TypeAlias",
+                "source_file": "hier.sv",
+                "source_line": 3,
+                "source_column": 42,
+                "addr": 2599002071984,
+                "target": "2599002075728 hp::mode_e"
+              },
+              {
+                "name": "pair_t",
+                "kind": "TypeAlias",
+                "source_file": "hier.sv",
+                "source_line": 4,
+                "source_column": 55,
+                "addr": 2599002072128,
+                "target": {
+                  "name": "",
+                  "kind": "PackedStructType",
+                  "source_file": "hier.sv",
+                  "source_line": 4,
+                  "source_column": 13,
+                  "addr": 2599002076496,
+                  "members": [
+                    {
+                      "name": "a",
+                      "kind": "Field",
+                      "source_file": "hier.sv",
+                      "source_line": 4,
+                      "source_column": 35,
+                      "addr": 2599002076624,
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4314939112,
+                        "isSigned": false
+                      },
+                      "lifetime": "Automatic",
+                      "bitOffset": 4,
+                      "fieldIndex": 0
+                    },
+                    {
+                      "name": "b",
+                      "kind": "Field",
+                      "source_file": "hier.sv",
+                      "source_line": 4,
+                      "source_column": 50,
+                      "addr": 2599002077008,
+                      "type": {
+                        "name": "",
+                        "kind": "PackedArrayType",
+                        "addr": 2599002076920,
+                        "elementType": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4314939112,
+                          "isSigned": false
+                        },
+                        "range": "[3:0]"
+                      },
+                      "lifetime": "Automatic",
+                      "bitOffset": 0,
+                      "fieldIndex": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "byte_t",
+                "kind": "TypeAlias",
+                "source_file": "hier.sv",
+                "source_line": 5,
+                "source_column": 25,
+                "addr": 2599002072272,
+                "target": {
+                  "name": "",
+                  "kind": "PackedArrayType",
+                  "addr": 2599002077304,
+                  "elementType": {
+                    "name": "logic",
+                    "kind": "ScalarType",
+                    "addr": 4314939112,
+                    "isSigned": false
+                  },
+                  "range": "[7:0]"
+                }
+              },
+              {
+                "name": "alias_t",
+                "kind": "TypeAlias",
+                "source_file": "hier.sv",
+                "source_line": 6,
+                "source_column": 20,
+                "addr": 2599002072416,
+                "target": "2599002072272 hp::byte_t"
+              },
+              {
+                "name": "DEPTH",
+                "kind": "Parameter",
+                "source_file": "hier.sv",
+                "source_line": 7,
+                "source_column": 28,
+                "addr": 2599002072560,
+                "type": {
+                  "name": "int",
+                  "kind": "PredefinedIntegerType",
+                  "addr": 2599002077392
+                },
+                "initializer": {
+                  "source_file_start": "hier.sv",
+                  "source_file_end": "hier.sv",
+                  "source_line_start": 7,
+                  "source_line_end": 7,
+                  "source_column_start": 36,
+                  "source_column_end": 37,
+                  "kind": "Conversion",
+                  "type": {
+                    "name": "int",
+                    "kind": "PredefinedIntegerType",
+                    "addr": 2599002077392
+                  },
+                  "operand": {
+                    "source_file_start": "hier.sv",
+                    "source_file_end": "hier.sv",
+                    "source_line_start": 7,
+                    "source_line_end": 7,
+                    "source_column_start": 36,
+                    "source_column_end": 37,
+                    "kind": "IntegerLiteral",
+                    "type": {
+                      "name": "int",
+                      "kind": "PredefinedIntegerType",
+                      "addr": 4314939512
+                    },
+                    "value": "4",
+                    "constant": "4"
+                  },
+                  "constant": "32'd4"
+                },
+                "value": "32'd4",
+                "isLocal": true,
+                "isPort": false,
+                "isBody": true
+              },
+              {
+                "name": "MODE",
+                "kind": "Parameter",
+                "source_file": "hier.sv",
+                "source_line": 8,
+                "source_column": 22,
+                "addr": 2599002072728,
+                "type": "2599002071984 hp::mode_e",
+                "initializer": {
+                  "source_file_start": "hier.sv",
+                  "source_file_end": "hier.sv",
+                  "source_line_start": 8,
+                  "source_line_end": 8,
+                  "source_column_start": 29,
+                  "source_column_end": 30,
+                  "kind": "NamedValue",
+                  "type": "2599002075728 hp::mode_e",
+                  "symbol": "2599002076080 B",
+                  "constant": "2'b1"
+                },
+                "value": "2'b1",
+                "isLocal": true,
+                "isPort": false,
+                "isBody": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "hier_top",
+        "kind": "Instance",
+        "source_file": "hier.sv",
+        "source_line": 25,
+        "source_column": 8,
+        "addr": 2599002075360,
+        "body": {
+          "name": "hier_top",
+          "kind": "InstanceBody",
+          "source_file": "hier.sv",
+          "source_line": 25,
+          "source_column": 8,
+          "addr": 2599002072896,
+          "members": [
+            {
+              "name": "clk",
+              "kind": "Port",
+              "source_file": "hier.sv",
+              "source_line": 25,
+              "source_column": 30,
+              "addr": 2599002078736,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4314939112,
+                "isSigned": false
+              },
+              "direction": "In",
+              "internalSymbol": "2599002078856 clk"
+            },
+            {
+              "name": "clk",
+              "kind": "Net",
+              "source_file": "hier.sv",
+              "source_line": 25,
+              "source_column": 30,
+              "addr": 2599002078856,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4314939112,
+                "isSigned": false
+              },
+              "netType": {
+                "name": "wire",
+                "kind": "NetType",
+                "addr": 2598992941600,
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4314939112,
+                  "isSigned": false
+                }
+              }
+            },
+            {
+              "name": "p_o",
+              "kind": "Port",
+              "source_file": "hier.sv",
+              "source_line": 25,
+              "source_column": 53,
+              "addr": 2599002079016,
+              "type": "2599002072128 hp::pair_t",
+              "direction": "Out",
+              "internalSymbol": "2599002083344 p_o"
+            },
+            {
+              "name": "p_o",
+              "kind": "Variable",
+              "source_file": "hier.sv",
+              "source_line": 25,
+              "source_column": 53,
+              "addr": 2599002083344,
+              "type": "2599002072128 hp::pair_t",
+              "lifetime": "Static"
+            },
+            {
+              "name": "",
+              "kind": "WildcardImport",
+              "source_file": "hier.sv",
+              "source_line": 26,
+              "source_column": 16,
+              "addr": 2599002073136,
+              "package": "2599002071776 hp"
+            },
+            {
+              "name": "count",
+              "kind": "Variable",
+              "source_file": "hier.sv",
+              "source_line": 27,
+              "source_column": 18,
+              "addr": 2599002073224,
+              "type": {
+                "name": "int",
+                "kind": "PredefinedIntegerType",
+                "addr": 2599002089096
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "i32",
+              "kind": "Variable",
+              "source_file": "hier.sv",
+              "source_line": 28,
+              "source_column": 13,
+              "addr": 2599002073360,
+              "type": {
+                "name": "integer",
+                "kind": "PredefinedIntegerType",
+                "addr": 4314939752
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "tiny",
+              "kind": "Variable",
+              "source_file": "hier.sv",
+              "source_line": 29,
+              "source_column": 21,
+              "addr": 2599002073496,
+              "type": {
+                "name": "shortint",
+                "kind": "PredefinedIntegerType",
+                "addr": 4314939832
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "bytes",
+              "kind": "Variable",
+              "source_file": "hier.sv",
+              "source_line": 30,
+              "source_column": 12,
+              "addr": 2599002077768,
+              "type": {
+                "name": "",
+                "kind": "FixedSizeUnpackedArrayType",
+                "addr": 2599002089320,
+                "elementType": "2599002072272 hp::byte_t",
+                "range": "[0:3]"
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "mem",
+              "kind": "Variable",
+              "source_file": "hier.sv",
+              "source_line": 31,
+              "source_column": 17,
+              "addr": 2599002073696,
+              "type": {
+                "name": "",
+                "kind": "FixedSizeUnpackedArrayType",
+                "addr": 2599002089944,
+                "elementType": {
+                  "name": "",
+                  "kind": "FixedSizeUnpackedArrayType",
+                  "addr": 2599002089704,
+                  "elementType": {
+                    "name": "",
+                    "kind": "PackedArrayType",
+                    "addr": 2599002077304,
+                    "elementType": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4314939112,
+                      "isSigned": false
+                    },
+                    "range": "[7:0]"
+                  },
+                  "range": "[1:0]"
+                },
+                "range": "[3:0]"
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "q",
+              "kind": "Variable",
+              "source_file": "hier.sv",
+              "source_line": 32,
+              "source_column": 11,
+              "addr": 2599002073832,
+              "type": {
+                "name": "",
+                "kind": "QueueType",
+                "addr": 2599002090040,
+                "elementType": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4314939112,
+                  "isSigned": false
+                },
+                "maxBound": 0
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "ratio",
+              "kind": "Variable",
+              "source_file": "hier.sv",
+              "source_line": 33,
+              "source_column": 10,
+              "addr": 2599002073968,
+              "type": {
+                "name": "real",
+                "kind": "FloatingType",
+                "addr": 4314940152
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "name",
+              "kind": "Variable",
+              "source_file": "hier.sv",
+              "source_line": 34,
+              "source_column": 12,
+              "addr": 2599002074104,
+              "type": {
+                "name": "string",
+                "kind": "StringType",
+                "addr": 4314940368
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "mode",
+              "kind": "Variable",
+              "source_file": "hier.sv",
+              "source_line": 35,
+              "source_column": 12,
+              "addr": 2599002077904,
+              "type": "2599002071984 hp::mode_e",
+              "lifetime": "Static"
+            },
+            {
+              "name": "al",
+              "kind": "Variable",
+              "source_file": "hier.sv",
+              "source_line": 36,
+              "source_column": 13,
+              "addr": 2599002078040,
+              "type": "2599002072416 hp::alias_t",
+              "lifetime": "Static"
+            },
+            {
+              "name": "",
+              "kind": "EnumType",
+              "source_file": "hier.sv",
+              "source_line": 37,
+              "source_column": 5,
+              "addr": 2599002078176,
+              "members": [
+                {
+                  "name": "IDLE",
+                  "kind": "EnumValue",
+                  "source_file": "hier.sv",
+                  "source_line": 37,
+                  "source_column": 12,
+                  "addr": 2599002078320,
+                  "value": "0"
+                },
+                {
+                  "name": "RUN",
+                  "kind": "EnumValue",
+                  "source_file": "hier.sv",
+                  "source_line": 37,
+                  "source_column": 18,
+                  "addr": 2599002078528,
+                  "value": "1"
+                }
+              ],
+              "baseType": {
+                "name": "int",
+                "kind": "PredefinedIntegerType",
+                "addr": 4314939512
+              }
+            },
+            {
+              "name": "state",
+              "kind": "Variable",
+              "source_file": "hier.sv",
+              "source_line": 37,
+              "source_column": 24,
+              "addr": 2599002074432,
+              "type": "2599002078176 hier_top.e$2",
+              "lifetime": "Static"
+            },
+            {
+              "name": "anon",
+              "kind": "Variable",
+              "source_file": "hier.sv",
+              "source_line": 38,
+              "source_column": 41,
+              "addr": 2599002074568,
+              "type": {
+                "name": "",
+                "kind": "PackedStructType",
+                "source_file": "hier.sv",
+                "source_line": 38,
+                "source_column": 5,
+                "addr": 2599002090120,
+                "members": [
+                  {
+                    "name": "x",
+                    "kind": "Field",
+                    "source_file": "hier.sv",
+                    "source_line": 38,
+                    "source_column": 27,
+                    "addr": 2599002090248,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4314939112,
+                      "isSigned": false
+                    },
+                    "lifetime": "Automatic",
+                    "bitOffset": 1,
+                    "fieldIndex": 0
+                  },
+                  {
+                    "name": "y",
+                    "kind": "Field",
+                    "source_file": "hier.sv",
+                    "source_line": 38,
+                    "source_column": 36,
+                    "addr": 2599002090400,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4314939112,
+                      "isSigned": false
+                    },
+                    "lifetime": "Automatic",
+                    "bitOffset": 0,
+                    "fieldIndex": 1
+                  }
+                ]
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "S",
+              "kind": "Parameter",
+              "source_file": "hier.sv",
+              "source_line": 39,
+              "source_column": 22,
+              "addr": 2599002074704,
+              "type": {
+                "name": "string",
+                "kind": "StringType",
+                "addr": 4314940368
+              },
+              "initializer": {
+                "source_file_start": "hier.sv",
+                "source_file_end": "hier.sv",
+                "source_line_start": 39,
+                "source_line_end": 39,
+                "source_column_start": 26,
+                "source_column_end": 30,
+                "kind": "Conversion",
+                "type": {
+                  "name": "string",
+                  "kind": "StringType",
+                  "addr": 4314940368
+                },
+                "operand": {
+                  "source_file_start": "hier.sv",
+                  "source_file_end": "hier.sv",
+                  "source_line_start": 39,
+                  "source_line_end": 39,
+                  "source_column_start": 26,
+                  "source_column_end": 30,
+                  "kind": "StringLiteral",
+                  "type": {
+                    "name": "",
+                    "kind": "PackedArrayType",
+                    "addr": 2599002088680,
+                    "elementType": {
+                      "name": "bit",
+                      "kind": "ScalarType",
+                      "addr": 4314939032,
+                      "isSigned": false
+                    },
+                    "range": "[15:0]"
+                  },
+                  "literal": "hi",
+                  "constant": "16'd26729"
+                },
+                "constant": "\"hi\""
+              },
+              "value": "\"hi\"",
+              "isLocal": false,
+              "isPort": false,
+              "isBody": true
+            },
+            {
+              "name": "ONE",
+              "kind": "Parameter",
+              "source_file": "hier.sv",
+              "source_line": 40,
+              "source_column": 20,
+              "addr": 2599002074872,
+              "type": {
+                "name": "bit",
+                "kind": "ScalarType",
+                "addr": 4314939032,
+                "isSigned": false
+              },
+              "initializer": {
+                "source_file_start": "hier.sv",
+                "source_file_end": "hier.sv",
+                "source_line_start": 40,
+                "source_line_end": 40,
+                "source_column_start": 26,
+                "source_column_end": 30,
+                "kind": "IntegerLiteral",
+                "type": {
+                  "name": "",
+                  "kind": "PackedArrayType",
+                  "addr": 2599002088936,
+                  "elementType": {
+                    "name": "bit",
+                    "kind": "ScalarType",
+                    "addr": 4314939032,
+                    "isSigned": false
+                  },
+                  "range": "[0:0]"
+                },
+                "value": "1'b1",
+                "constant": "1'b1"
+              },
+              "value": "1'b1",
+              "isLocal": true,
+              "isPort": false,
+              "isBody": true
+            },
+            {
+              "name": "bus",
+              "kind": "Instance",
+              "source_file": "hier.sv",
+              "source_line": 41,
+              "source_column": 12,
+              "addr": 2599002083496,
+              "body": {
+                "name": "bus_if",
+                "kind": "InstanceBody",
+                "source_file": "hier.sv",
+                "source_line": 11,
+                "source_column": 11,
+                "addr": 2599002083624,
+                "members": [
+                  {
+                    "name": "data",
+                    "kind": "Variable",
+                    "source_file": "hier.sv",
+                    "source_line": 12,
+                    "source_column": 17,
+                    "addr": 2599002083800,
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 2599002077304,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4314939112,
+                        "isSigned": false
+                      },
+                      "range": "[7:0]"
+                    },
+                    "lifetime": "Static"
+                  },
+                  {
+                    "name": "valid",
+                    "kind": "Variable",
+                    "source_file": "hier.sv",
+                    "source_line": 13,
+                    "source_column": 11,
+                    "addr": 2599002083936,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4314939112,
+                      "isSigned": false
+                    },
+                    "lifetime": "Static"
+                  },
+                  {
+                    "name": "src",
+                    "kind": "Modport",
+                    "source_file": "hier.sv",
+                    "source_line": 14,
+                    "source_column": 13,
+                    "addr": 2599002090552,
+                    "members": [
+                      {
+                        "name": "data",
+                        "kind": "ModportPort",
+                        "source_file": "hier.sv",
+                        "source_line": 14,
+                        "source_column": 25,
+                        "addr": 2599002090664,
+                        "type": {
+                          "name": "",
+                          "kind": "PackedArrayType",
+                          "addr": 2599002077304,
+                          "elementType": {
+                            "name": "logic",
+                            "kind": "ScalarType",
+                            "addr": 4314939112,
+                            "isSigned": false
+                          },
+                          "range": "[7:0]"
+                        },
+                        "direction": "Out",
+                        "internalSymbol": "2599002083800 data"
+                      },
+                      {
+                        "name": "valid",
+                        "kind": "ModportPort",
+                        "source_file": "hier.sv",
+                        "source_line": 14,
+                        "source_column": 38,
+                        "addr": 2599002091024,
+                        "type": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4314939112,
+                          "isSigned": false
+                        },
+                        "direction": "Out",
+                        "internalSymbol": "2599002083936 valid"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "dst",
+                    "kind": "Modport",
+                    "source_file": "hier.sv",
+                    "source_line": 15,
+                    "source_column": 13,
+                    "addr": 2599002091240,
+                    "members": [
+                      {
+                        "name": "data",
+                        "kind": "ModportPort",
+                        "source_file": "hier.sv",
+                        "source_line": 15,
+                        "source_column": 24,
+                        "addr": 2599002091352,
+                        "type": {
+                          "name": "",
+                          "kind": "PackedArrayType",
+                          "addr": 2599002077304,
+                          "elementType": {
+                            "name": "logic",
+                            "kind": "ScalarType",
+                            "addr": 4314939112,
+                            "isSigned": false
+                          },
+                          "range": "[7:0]"
+                        },
+                        "direction": "In",
+                        "internalSymbol": "2599002083800 data"
+                      },
+                      {
+                        "name": "valid",
+                        "kind": "ModportPort",
+                        "source_file": "hier.sv",
+                        "source_line": 15,
+                        "source_column": 36,
+                        "addr": 2599002091592,
+                        "type": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4314939112,
+                          "isSigned": false
+                        },
+                        "direction": "In",
+                        "internalSymbol": "2599002083936 valid"
+                      }
+                    ]
+                  }
+                ],
+                "definition": "2598994208256 bus_if"
+              },
+              "connections": [
+              ]
+            },
+            {
+              "name": "u_child",
+              "kind": "Instance",
+              "source_file": "hier.sv",
+              "source_line": 42,
+              "source_column": 32,
+              "addr": 2599002084200,
+              "body": {
+                "name": "child",
+                "kind": "InstanceBody",
+                "source_file": "hier.sv",
+                "source_line": 18,
+                "source_column": 8,
+                "addr": 2599002084328,
+                "members": [
+                  {
+                    "name": "T",
+                    "kind": "TypeParameter",
+                    "source_file": "hier.sv",
+                    "source_line": 18,
+                    "source_column": 31,
+                    "addr": 2599002084504,
+                    "type": "2599002072272 hp::byte_t",
+                    "isLocal": false,
+                    "isPort": true,
+                    "isBody": false
+                  },
+                  {
+                    "name": "W",
+                    "kind": "Parameter",
+                    "source_file": "hier.sv",
+                    "source_line": 18,
+                    "source_column": 62,
+                    "addr": 2599002084880,
+                    "type": {
+                      "name": "int",
+                      "kind": "PredefinedIntegerType",
+                      "addr": 4314939512
+                    },
+                    "initializer": {
+                      "source_file_start": "hier.sv",
+                      "source_file_end": "hier.sv",
+                      "source_line_start": 42,
+                      "source_line_end": 42,
+                      "source_column_start": 28,
+                      "source_column_end": 29,
+                      "kind": "IntegerLiteral",
+                      "type": {
+                        "name": "int",
+                        "kind": "PredefinedIntegerType",
+                        "addr": 4314939512
+                      },
+                      "value": "3",
+                      "constant": "3"
+                    },
+                    "value": "3",
+                    "isLocal": false,
+                    "isPort": true,
+                    "isBody": false
+                  },
+                  {
+                    "name": "FLAG",
+                    "kind": "Parameter",
+                    "source_file": "hier.sv",
+                    "source_line": 18,
+                    "source_column": 83,
+                    "addr": 2599002085048,
+                    "type": {
+                      "name": "bit",
+                      "kind": "ScalarType",
+                      "addr": 4314939032,
+                      "isSigned": false
+                    },
+                    "initializer": {
+                      "source_file_start": "hier.sv",
+                      "source_file_end": "hier.sv",
+                      "source_line_start": 18,
+                      "source_line_end": 18,
+                      "source_column_start": 90,
+                      "source_column_end": 94,
+                      "kind": "IntegerLiteral",
+                      "type": {
+                        "name": "",
+                        "kind": "PackedArrayType",
+                        "addr": 2599002088936,
+                        "elementType": {
+                          "name": "bit",
+                          "kind": "ScalarType",
+                          "addr": 4314939032,
+                          "isSigned": false
+                        },
+                        "range": "[0:0]"
+                      },
+                      "value": "1'b1",
+                      "constant": "1'b1"
+                    },
+                    "value": "1'b1",
+                    "isLocal": false,
+                    "isPort": true,
+                    "isBody": false
+                  },
+                  {
+                    "name": "x",
+                    "kind": "Port",
+                    "source_file": "hier.sv",
+                    "source_line": 19,
+                    "source_column": 13,
+                    "addr": 2599002091808,
+                    "type": "2599002084664 child.T",
+                    "direction": "In",
+                    "internalSymbol": "2599002091928 x"
+                  },
+                  {
+                    "name": "x",
+                    "kind": "Net",
+                    "source_file": "hier.sv",
+                    "source_line": 19,
+                    "source_column": 13,
+                    "addr": 2599002091928,
+                    "type": "2599002084664 child.T",
+                    "netType": {
+                      "name": "wire",
+                      "kind": "NetType",
+                      "addr": 2598992941600,
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4314939112,
+                        "isSigned": false
+                      }
+                    }
+                  },
+                  {
+                    "name": "port",
+                    "kind": "InterfacePort",
+                    "source_file": "hier.sv",
+                    "source_line": 20,
+                    "source_column": 16,
+                    "addr": 2599002092088,
+                    "interfaceDef": "bus_if",
+                    "modport": "dst",
+                    "isGeneric": false
+                  },
+                  {
+                    "name": "r",
+                    "kind": "Variable",
+                    "source_file": "hier.sv",
+                    "source_line": 22,
+                    "source_column": 19,
+                    "addr": 2599002085280,
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 2599002093272,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4314939112,
+                        "isSigned": false
+                      },
+                      "range": "[2:0]"
+                    },
+                    "lifetime": "Static"
+                  }
+                ],
+                "definition": "2598994209024 child"
+              },
+              "connections": [
+                {
+                  "port": {
+                    "name": "x",
+                    "kind": "Port",
+                    "source_file": "hier.sv",
+                    "source_line": 19,
+                    "source_column": 13,
+                    "addr": 2599002091808,
+                    "type": "2599002084664 child.T",
+                    "direction": "In",
+                    "internalSymbol": "2599002091928 x"
+                  },
+                  "expr": {
+                    "source_file_start": "hier.sv",
+                    "source_file_end": "hier.sv",
+                    "source_line_start": 42,
+                    "source_line_end": 42,
+                    "source_column_start": 44,
+                    "source_column_end": 48,
+                    "kind": "Conversion",
+                    "type": "2599002084664 child.T",
+                    "operand": {
+                      "source_file_start": "hier.sv",
+                      "source_file_end": "hier.sv",
+                      "source_line_start": 42,
+                      "source_line_end": 42,
+                      "source_column_start": 44,
+                      "source_column_end": 48,
+                      "kind": "IntegerLiteral",
+                      "type": {
+                        "name": "",
+                        "kind": "PackedArrayType",
+                        "addr": 2599002092600,
+                        "elementType": {
+                          "name": "bit",
+                          "kind": "ScalarType",
+                          "addr": 4314939032,
+                          "isSigned": false
+                        },
+                        "range": "[7:0]"
+                      },
+                      "value": "8'd0",
+                      "constant": "8'd0"
+                    },
+                    "constant": "8'd0"
+                  }
+                },
+                {
+                  "port": {
+                    "name": "port",
+                    "kind": "InterfacePort",
+                    "source_file": "hier.sv",
+                    "source_line": 20,
+                    "source_column": 16,
+                    "addr": 2599002092088,
+                    "interfaceDef": "bus_if",
+                    "modport": "dst",
+                    "isGeneric": false
+                  },
+                  "ifaceInstance": "2599002083496 bus",
+                  "modport": "2599002091240 dst"
+                }
+              ]
+            },
+            {
+              "name": "gl",
+              "kind": "GenerateBlockArray",
+              "source_file": "hier.sv",
+              "source_line": 43,
+              "source_column": 44,
+              "addr": 2599002085440,
+              "members": [
+                {
+                  "name": "g",
+                  "kind": "Genvar",
+                  "source_file": "hier.sv",
+                  "source_line": 43,
+                  "source_column": 17,
+                  "addr": 2599002085640
+                },
+                {
+                  "name": "",
+                  "kind": "GenerateBlock",
+                  "source_file": "hier.sv",
+                  "source_line": 43,
+                  "source_column": 44,
+                  "addr": 2599002086648,
+                  "members": [
+                    {
+                      "name": "g",
+                      "kind": "Parameter",
+                      "source_file": "hier.sv",
+                      "source_line": 43,
+                      "source_column": 17,
+                      "addr": 2599002086792,
+                      "type": {
+                        "name": "integer",
+                        "kind": "PredefinedIntegerType",
+                        "addr": 4314939752
+                      },
+                      "value": "1",
+                      "isLocal": true,
+                      "isPort": false,
+                      "isBody": true
+                    },
+                    {
+                      "name": "v",
+                      "kind": "Variable",
+                      "source_file": "hier.sv",
+                      "source_line": 44,
+                      "source_column": 21,
+                      "addr": 2599002086960,
+                      "type": {
+                        "name": "",
+                        "kind": "PackedArrayType",
+                        "addr": 2599002075640,
+                        "elementType": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4314939112,
+                          "isSigned": false
+                        },
+                        "range": "[1:0]"
+                      },
+                      "lifetime": "Static"
+                    }
+                  ],
+                  "constructIndex": 0,
+                  "isUninstantiated": false,
+                  "branchKind": "LoopIteration"
+                },
+                {
+                  "name": "",
+                  "kind": "GenerateBlock",
+                  "source_file": "hier.sv",
+                  "source_line": 43,
+                  "source_column": 44,
+                  "addr": 2599002087096,
+                  "members": [
+                    {
+                      "name": "g",
+                      "kind": "Parameter",
+                      "source_file": "hier.sv",
+                      "source_line": 43,
+                      "source_column": 17,
+                      "addr": 2599002087240,
+                      "type": {
+                        "name": "integer",
+                        "kind": "PredefinedIntegerType",
+                        "addr": 4314939752
+                      },
+                      "value": "2",
+                      "isLocal": true,
+                      "isPort": false,
+                      "isBody": true
+                    },
+                    {
+                      "name": "v",
+                      "kind": "Variable",
+                      "source_file": "hier.sv",
+                      "source_line": 44,
+                      "source_column": 21,
+                      "addr": 2599002087440,
+                      "type": {
+                        "name": "",
+                        "kind": "PackedArrayType",
+                        "addr": 2599002093272,
+                        "elementType": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4314939112,
+                          "isSigned": false
+                        },
+                        "range": "[2:0]"
+                      },
+                      "lifetime": "Static"
+                    }
+                  ],
+                  "constructIndex": 1,
+                  "isUninstantiated": false,
+                  "branchKind": "LoopIteration"
+                }
+              ],
+              "constructIndex": 1,
+              "initialExpression": {
+                "source_file_start": "hier.sv",
+                "source_file_end": "hier.sv",
+                "source_line_start": 43,
+                "source_line_end": 43,
+                "source_column_start": 21,
+                "source_column_end": 22,
+                "kind": "Conversion",
+                "type": {
+                  "name": "integer",
+                  "kind": "PredefinedIntegerType",
+                  "addr": 4314939752
+                },
+                "operand": {
+                  "source_file_start": "hier.sv",
+                  "source_file_end": "hier.sv",
+                  "source_line_start": 43,
+                  "source_line_end": 43,
+                  "source_column_start": 21,
+                  "source_column_end": 22,
+                  "kind": "IntegerLiteral",
+                  "type": {
+                    "name": "int",
+                    "kind": "PredefinedIntegerType",
+                    "addr": 4314939512
+                  },
+                  "value": "1",
+                  "constant": "1"
+                },
+                "constant": "1"
+              },
+              "stopExpression": {
+                "source_file_start": "hier.sv",
+                "source_file_end": "hier.sv",
+                "source_line_start": 43,
+                "source_line_end": 43,
+                "source_column_start": 24,
+                "source_column_end": 29,
+                "kind": "BinaryOp",
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4314939112,
+                  "isSigned": false
+                },
+                "op": "LessThan",
+                "left": {
+                  "source_file_start": "hier.sv",
+                  "source_file_end": "hier.sv",
+                  "source_line_start": 43,
+                  "source_line_end": 43,
+                  "source_column_start": 24,
+                  "source_column_end": 25,
+                  "kind": "NamedValue",
+                  "type": {
+                    "name": "integer",
+                    "kind": "PredefinedIntegerType",
+                    "addr": 4314939752
+                  },
+                  "symbol": "2599002086080 g"
+                },
+                "right": {
+                  "source_file_start": "hier.sv",
+                  "source_file_end": "hier.sv",
+                  "source_line_start": 43,
+                  "source_line_end": 43,
+                  "source_column_start": 28,
+                  "source_column_end": 29,
+                  "kind": "Conversion",
+                  "type": {
+                    "name": "integer",
+                    "kind": "PredefinedIntegerType",
+                    "addr": 4314939752
+                  },
+                  "operand": {
+                    "source_file_start": "hier.sv",
+                    "source_file_end": "hier.sv",
+                    "source_line_start": 43,
+                    "source_line_end": 43,
+                    "source_column_start": 28,
+                    "source_column_end": 29,
+                    "kind": "IntegerLiteral",
+                    "type": {
+                      "name": "int",
+                      "kind": "PredefinedIntegerType",
+                      "addr": 4314939512
+                    },
+                    "value": "3",
+                    "constant": "3"
+                  },
+                  "constant": "3"
+                }
+              },
+              "iterExpression": {
+                "source_file_start": "hier.sv",
+                "source_file_end": "hier.sv",
+                "source_line_start": 43,
+                "source_line_end": 43,
+                "source_column_start": 31,
+                "source_column_end": 34,
+                "kind": "UnaryOp",
+                "type": {
+                  "name": "integer",
+                  "kind": "PredefinedIntegerType",
+                  "addr": 4314939752
+                },
+                "op": "Postincrement",
+                "operand": {
+                  "source_file_start": "hier.sv",
+                  "source_file_end": "hier.sv",
+                  "source_line_start": 43,
+                  "source_line_end": 43,
+                  "source_column_start": 31,
+                  "source_column_end": 32,
+                  "kind": "NamedValue",
+                  "type": {
+                    "name": "integer",
+                    "kind": "PredefinedIntegerType",
+                    "addr": 4314939752
+                  },
+                  "symbol": "2599002086080 g"
+                }
+              },
+              "loopVariable": "2599002086080 g"
+            },
+            {
+              "name": "taken",
+              "kind": "GenerateBlock",
+              "source_file": "hier.sv",
+              "source_line": 48,
+              "source_column": 22,
+              "addr": 2599002088256,
+              "members": [
+                {
+                  "name": "y",
+                  "kind": "Variable",
+                  "source_file": "hier.sv",
+                  "source_line": 49,
+                  "source_column": 15,
+                  "addr": 2599002088400,
+                  "type": {
+                    "name": "logic",
+                    "kind": "ScalarType",
+                    "addr": 4314939112,
+                    "isSigned": false
+                  },
+                  "lifetime": "Static"
+                }
+              ],
+              "constructIndex": 2,
+              "isUninstantiated": false,
+              "branchKind": "IfFalse",
+              "conditionExpression": {
+                "source_file_start": "hier.sv",
+                "source_file_end": "hier.sv",
+                "source_line_start": 46,
+                "source_line_end": 46,
+                "source_column_start": 9,
+                "source_column_end": 19,
+                "kind": "BinaryOp",
+                "type": {
+                  "name": "bit",
+                  "kind": "ScalarType",
+                  "addr": 4314939032,
+                  "isSigned": false
+                },
+                "op": "Equality",
+                "left": {
+                  "source_file_start": "hier.sv",
+                  "source_file_end": "hier.sv",
+                  "source_line_start": 46,
+                  "source_line_end": 46,
+                  "source_column_start": 9,
+                  "source_column_end": 14,
+                  "kind": "NamedValue",
+                  "type": {
+                    "name": "int",
+                    "kind": "PredefinedIntegerType",
+                    "addr": 2599002077392
+                  },
+                  "symbol": "2599002072560 DEPTH",
+                  "constant": "32'd4"
+                },
+                "right": {
+                  "source_file_start": "hier.sv",
+                  "source_file_end": "hier.sv",
+                  "source_line_start": 46,
+                  "source_line_end": 46,
+                  "source_column_start": 18,
+                  "source_column_end": 19,
+                  "kind": "Conversion",
+                  "type": {
+                    "name": "int",
+                    "kind": "PredefinedIntegerType",
+                    "addr": 2599002077392
+                  },
+                  "operand": {
+                    "source_file_start": "hier.sv",
+                    "source_file_end": "hier.sv",
+                    "source_line_start": 46,
+                    "source_line_end": 46,
+                    "source_column_start": 18,
+                    "source_column_end": 19,
+                    "kind": "IntegerLiteral",
+                    "type": {
+                      "name": "int",
+                      "kind": "PredefinedIntegerType",
+                      "addr": 4314939512
+                    },
+                    "value": "5",
+                    "constant": "5"
+                  },
+                  "constant": "32'd5"
+                },
+                "constant": "1'b0"
+              }
+            }
+          ],
+          "definition": "2598994209792 hier_top"
+        },
+        "connections": [
+        ]
+      }
+    ]
+  },
+  "definitions": [
+    {
+      "name": "bus_if",
+      "kind": "Definition",
+      "source_file": "hier.sv",
+      "source_line": 11,
+      "source_column": 11,
+      "addr": 2598994208256,
+      "defaultNetType": "2598992941600 wire",
+      "definitionKind": "Interface",
+      "defaultLifetime": "Static",
+      "unconnectedDrive": "None",
+      "cellDefine": false
+    },
+    {
+      "name": "child",
+      "kind": "Definition",
+      "source_file": "hier.sv",
+      "source_line": 18,
+      "source_column": 8,
+      "addr": 2598994209024,
+      "defaultNetType": "2598992941600 wire",
+      "definitionKind": "Module",
+      "defaultLifetime": "Static",
+      "unconnectedDrive": "None",
+      "cellDefine": false
+    },
+    {
+      "name": "hier_top",
+      "kind": "Definition",
+      "source_file": "hier.sv",
+      "source_line": 25,
+      "source_column": 8,
+      "addr": 2598994209792,
+      "defaultNetType": "2598992941600 wire",
+      "definitionKind": "Module",
+      "defaultLifetime": "Static",
+      "unconnectedDrive": "None",
+      "cellDefine": false
+    }
+  ]
+}

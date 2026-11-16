@@ -1,0 +1,20 @@
+Eshvi includes the third-party material below. The full text of each license
+follows this list.
+
+Codicons
+  https://github.com/microsoft/vscode-codicons
+  Copyright (c) Microsoft Corporation
+  Icons used unmodified, under the Creative Commons Attribution 4.0
+  International license (https://creativecommons.org/licenses/by/4.0/).
+  Eshvi draws them in its theme's colors.
+
+SystemVerilog grammar
+  https://github.com/TheClams/SystemVerilog
+  Copyright (c) TheClams and contributors
+  The file SystemVerilog.sublime-syntax, used unmodified, under the Apache
+  License 2.0, for coloring SystemVerilog code in popups and previews.
+
+Material Icon Theme
+  https://github.com/material-extensions/vscode-material-icon-theme
+  Copyright (c) 2025 Material Extensions
+  File and folder icons, under the MIT License.

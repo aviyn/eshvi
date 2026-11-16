@@ -1,0 +1,137 @@
+# Eshvi settings: ~/.config/eshvi/config.toml (Eshvi › Settings…, ⌘,).
+#
+# Every key is optional. This file sets each one to its default, so copying it changes
+# nothing until you edit a value. Keys without a default are commented out, with an example.
+# Most settings apply while Eshvi runs; the ones marked "restart" need a restart.
+# Neovim's own settings stay in your Neovim config (~/.config/eshvi/nvim by default).
+
+# The editor font, in 'guifont' syntax: families separated by commas, then :h<size>.
+# A 'guifont' set in your Neovim config wins. Default: Menlo, 13.
+# font = "JetBrains_Mono,Menlo:h14"
+
+# All UI text: panels, popups, tabs, the status bar and title bar. Same syntax.
+# Default: the system UI font. [sidebar] font and [explorer] font_size override it.
+# ui_font = "SF Pro:h13"
+
+alt_is_meta = true            # Option sends <M-x>; false: Option composes characters (é, ∑)
+cursor_blink = true           # as 'guicursor' asks
+smooth_scroll = true          # scrolled text glides instead of jumping
+scrollbar = "auto"            # "auto" (while scrolling or near it), "always", "never"
+
+[popup]                       # hover, signature help, completion documentation
+hover_max_width = 620
+hover_max_height = 420
+signature_max_width = 720
+corner_radius = 6
+shadow = true
+restyle_floats = true         # draw plugins' floating windows in the popup colors
+
+[sidebar]                     # plugin file trees drawn as a side panel
+enabled = true                # restart
+filetypes = ["NvimTree", "neo-tree"]  # restart
+hide_statusline = true        # draw the panel over its status line
+# font = "SF Pro:h13"         # default: ui_font, else the system UI font 1pt below the editor's
+
+[window]
+custom_titlebar = true        # macOS: a thin title bar in the theme's panel color (restart)
+titlebar_height = 32          # 16 to 60 (restart)
+tabs = "wide"                 # tab pages in the title bar: "wide" (equal pills) or "compact"
+
+[explorer]                    # the file explorer (⌘B toggles it, ⇧⌘E focuses it)
+enabled = true                # restart
+visible = true                # shown at startup
+width = 260
+show_ignored = false          # show files that .gitignore ignores
+nesting = true                # related files under their main one (Cargo.lock under Cargo.toml)
+# font_size = 13              # default: the size of ui_font, else 13
+
+[outline]                     # the Outline pane under the explorer
+enabled = true
+follow_cursor = true          # select the symbol the cursor is in
+sort = "position"             # "position", "name" or "kind"
+
+[preview]                     # the Markdown preview (:EshviPreview)
+# font_size = 14              # prose and code; headings scale from it. Default: the editor font's size.
+                              # Follows zoom (⌘+ / ⌘−)
+
+[session]                     # :EshviSession, File › Save Session… (restart)
+auto = true                   # a folder's session is saved on quit and restored when Eshvi starts
+                              # there (or from the Dock) without files
+
+[picker]                      # ⌘P, ⇧⌘P and the other pickers
+preview = "auto"              # grep's preview: "auto" (beside the list when it gets 100 columns
+                              # there, else under it), "beside" or "under"
+
+[menu]                        # macOS: the native menu bar, from Neovim's :menu (restart)
+enabled = true                # Eshvi's menus and your own :amenu items
+
+[cmdline]                     # Neovim's command line: `:`, `/`, `?`, input()
+position = "bottom"           # "bottom" (above the status bar) or "top"; its menus open away from it
+
+[messages]                    # restart
+restore_notify = true         # the built-in vim.notify (toasts) even if a plugin replaces it
+
+[layout]                      # applied inside Eshvi only (restart)
+global_statusline = true      # 'laststatus' 3: one status bar, thin window separators
+winbar = true                 # a file name header on each window
+native_tabs = true            # tab pages as title bar tabs (replaces 'tabline' plugins)
+
+[statusline]
+gui = true                    # Eshvi's own bar: the system font, the right part right-aligned
+colors = "panel"              # "panel" (the theme's panel shade), "theme" (Neovim's StatusLine
+                              # highlights) or "fixed" (the colors below)
+highlight_mode = true         # a colored pill behind NORMAL, INSERT, …
+bg = "#181818"                # "fixed" only: the bar of the window with the cursor
+fg = "#cccccc"
+inactive_bg = "#181818"       # "fixed" only: other windows' bars
+inactive_fg = "#8b8b8b"
+border = "#2b2b2b"
+# font_size = 12              # default: 1pt below the size of ui_font, else 12
+
+[terminal]                    # the bottom panel: Problems and terminals (⌃`, ⇧⌘M, ⌘J)
+enabled = true                # restart
+height = 12                   # rows at first; a height you drag to is kept for the session
+problems_font = "ui"          # the Problems list: "ui" (the side bar's font) or "editor"
+scrollback = 10000            # lines kept above the screen (read when a terminal starts)
+option_as_meta = true         # Option sends ESC before the key; false: it composes characters
+copy_on_select = true         # a mouse selection goes on the clipboard when you let go
+middle_click_paste = true     # a middle click pastes the clipboard
+shell_args = ["-l"]           # the shell's arguments: a login shell, so the Dock's Eshvi gets
+                              # your PATH. [] for an interactive shell that reads ~/.bashrc
+keep_ctrl_hjkl = ["nvim", "vim", "fzf", "lazygit"]  # programs that keep ⌃h/j/k/l; elsewhere
+                                                    # they move to the next panel, as in tmux
+# shell = "/opt/homebrew/bin/bash"  # default: $SHELL. Not Neovim's 'shell'. Agents start through it
+# font = "SF Mono:h12"        # 'guifont' syntax; default: the editor font
+
+[agent]                       # the agent panel on the right: Claude Code or another coding agent
+enabled = false               # true: the panel (⌥⌘B), its title bar toggle, Claude Code's IDE
+                              # connection and the agents' Changes (restart)
+command = ["claude"]          # the agent to run, e.g. ["claude", "--continue"] (restart)
+width = 80                    # columns at first, at most 40% of the window
+diff = "native"               # a file's diff from Changes: "native" (Eshvi's diff view over the editor),
+                              # or Neovim's: "tab" or "buffer" (as `git diff` prints it)
+# font = "SF Mono:h12"        # default: [terminal] font, else the editor font
+
+[agent.commands]              # more agents "+" offers, by name (restart)
+# codex = ["codex"]
+
+[git]                         # the Source Control panel
+diff = "native"               # a file's diff from the panel: as [agent] diff
+
+[diff]                        # the diff view (Source Control, a commit, the agents' Changes)
+layout = "unified"            # at first: "unified" or "split" (side by side); `s` switches
+context = 3                   # unchanged lines kept around each change; the rest fold
+
+[neovim]
+config = "own"                # "own": Neovim's config is ~/.config/eshvi/nvim, with Eshvi's native
+                              # completion; "shared": ~/.config/nvim, as in a terminal (restart).
+                              # An NVIM_APPNAME already in the environment wins
+copy_on_select = false        # true: a mouse selection in the editor goes on the clipboard when you
+                              # let go (not a yank; "* and "+ then give it) (restart)
+
+[colors]                      # override colors Eshvi takes from your colorscheme
+# accent = "#89b4fa"
+# popup_bg = "#1e1e2e"
+# popup_fg = "#cdd6f4"
+# popup_border = "#45475a"
+# popup_selection = "#313244"

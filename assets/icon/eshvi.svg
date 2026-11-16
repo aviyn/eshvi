@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Eshvi: a porthole onto a prompt and cursor. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2c3444"/><stop offset="1" stop-color="#171b24"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d5dae2"/><stop offset="1" stop-color="#8b94a1"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c3f53"/><stop offset="1" stop-color="#0d1a23"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="108" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="200" fill="url(#ring)"/>
+  <circle cx="256" cy="256" r="150" fill="url(#glass)"/>
+  <path d="M182 208 L230 256 L182 304" fill="none" stroke="#16b0ed" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="260" y="198" width="64" height="116" rx="8" fill="#88c649"/>
+</svg>

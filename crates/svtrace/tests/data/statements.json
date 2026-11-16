@@ -1,0 +1,1921 @@
+{
+  "design": {
+    "name": "$root",
+    "kind": "Root",
+    "addr": 3549522893536,
+    "members": [
+      {
+        "name": "",
+        "kind": "CompilationUnit",
+        "addr": 3549532017104
+      },
+      {
+        "name": "top",
+        "kind": "Instance",
+        "source_file": "statements.sv",
+        "source_line": 7,
+        "source_column": 8,
+        "addr": 3549532018384,
+        "body": {
+          "name": "top",
+          "kind": "InstanceBody",
+          "source_file": "statements.sv",
+          "source_line": 7,
+          "source_column": 8,
+          "addr": 3549532017376,
+          "members": [
+            {
+              "name": "clk",
+              "kind": "Port",
+              "source_file": "statements.sv",
+              "source_line": 7,
+              "source_column": 24,
+              "addr": 3549532018520,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "direction": "In",
+              "internalSymbol": "3549532018640 clk"
+            },
+            {
+              "name": "clk",
+              "kind": "Net",
+              "source_file": "statements.sv",
+              "source_line": 7,
+              "source_column": 24,
+              "addr": 3549532018640,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "netType": {
+                "name": "wire",
+                "kind": "NetType",
+                "addr": 3549522891296,
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4309516008,
+                  "isSigned": false
+                }
+              }
+            },
+            {
+              "name": "a",
+              "kind": "Port",
+              "source_file": "statements.sv",
+              "source_line": 7,
+              "source_column": 41,
+              "addr": 3549532018800,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "direction": "In",
+              "internalSymbol": "3549532018920 a"
+            },
+            {
+              "name": "a",
+              "kind": "Net",
+              "source_file": "statements.sv",
+              "source_line": 7,
+              "source_column": 41,
+              "addr": 3549532018920,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "netType": {
+                "name": "wire",
+                "kind": "NetType",
+                "addr": 3549522891296,
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4309516008,
+                  "isSigned": false
+                }
+              }
+            },
+            {
+              "name": "b",
+              "kind": "Port",
+              "source_file": "statements.sv",
+              "source_line": 7,
+              "source_column": 56,
+              "addr": 3549532019080,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "direction": "In",
+              "internalSymbol": "3549532019200 b"
+            },
+            {
+              "name": "b",
+              "kind": "Net",
+              "source_file": "statements.sv",
+              "source_line": 7,
+              "source_column": 56,
+              "addr": 3549532019200,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "netType": {
+                "name": "wire",
+                "kind": "NetType",
+                "addr": 3549522891296,
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4309516008,
+                  "isSigned": false
+                }
+              }
+            },
+            {
+              "name": "sel",
+              "kind": "Port",
+              "source_file": "statements.sv",
+              "source_line": 7,
+              "source_column": 71,
+              "addr": 3549532019360,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "direction": "In",
+              "internalSymbol": "3549532019480 sel"
+            },
+            {
+              "name": "sel",
+              "kind": "Net",
+              "source_file": "statements.sv",
+              "source_line": 7,
+              "source_column": 71,
+              "addr": 3549532019480,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "netType": {
+                "name": "wire",
+                "kind": "NetType",
+                "addr": 3549522891296,
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4309516008,
+                  "isSigned": false
+                }
+              }
+            },
+            {
+              "name": "k",
+              "kind": "Port",
+              "source_file": "statements.sv",
+              "source_line": 7,
+              "source_column": 88,
+              "addr": 3549532019640,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "direction": "In",
+              "internalSymbol": "3549532019760 k"
+            },
+            {
+              "name": "k",
+              "kind": "Net",
+              "source_file": "statements.sv",
+              "source_line": 7,
+              "source_column": 88,
+              "addr": 3549532019760,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "netType": {
+                "name": "wire",
+                "kind": "NetType",
+                "addr": 3549522891296,
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4309516008,
+                  "isSigned": false
+                }
+              }
+            },
+            {
+              "name": "y",
+              "kind": "Port",
+              "source_file": "statements.sv",
+              "source_line": 8,
+              "source_column": 25,
+              "addr": 3549532019920,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "direction": "Out",
+              "internalSymbol": "3549532020040 y"
+            },
+            {
+              "name": "y",
+              "kind": "Variable",
+              "source_file": "statements.sv",
+              "source_line": 8,
+              "source_column": 25,
+              "addr": 3549532020040,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "z",
+              "kind": "Port",
+              "source_file": "statements.sv",
+              "source_line": 8,
+              "source_column": 41,
+              "addr": 3549532020176,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "direction": "Out",
+              "internalSymbol": "3549532020296 z"
+            },
+            {
+              "name": "z",
+              "kind": "Variable",
+              "source_file": "statements.sv",
+              "source_line": 8,
+              "source_column": 41,
+              "addr": 3549532020296,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "w",
+              "kind": "Port",
+              "source_file": "statements.sv",
+              "source_line": 8,
+              "source_column": 57,
+              "addr": 3549532020432,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "direction": "Out",
+              "internalSymbol": "3549532020552 w"
+            },
+            {
+              "name": "w",
+              "kind": "Variable",
+              "source_file": "statements.sv",
+              "source_line": 8,
+              "source_column": 57,
+              "addr": 3549532020552,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "q",
+              "kind": "Port",
+              "source_file": "statements.sv",
+              "source_line": 8,
+              "source_column": 73,
+              "addr": 3549532020752,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "direction": "Out",
+              "internalSymbol": "3549532020872 q"
+            },
+            {
+              "name": "q",
+              "kind": "Variable",
+              "source_file": "statements.sv",
+              "source_line": 8,
+              "source_column": 73,
+              "addr": 3549532020872,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "r",
+              "kind": "Port",
+              "source_file": "statements.sv",
+              "source_line": 8,
+              "source_column": 89,
+              "addr": 3549532021008,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "direction": "Out",
+              "internalSymbol": "3549532021128 r"
+            },
+            {
+              "name": "r",
+              "kind": "Variable",
+              "source_file": "statements.sv",
+              "source_line": 8,
+              "source_column": 89,
+              "addr": 3549532021128,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "s",
+              "kind": "Port",
+              "source_file": "statements.sv",
+              "source_line": 8,
+              "source_column": 105,
+              "addr": 3549532021264,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "direction": "Out",
+              "internalSymbol": "3549532021384 s"
+            },
+            {
+              "name": "s",
+              "kind": "Variable",
+              "source_file": "statements.sv",
+              "source_line": 8,
+              "source_column": 105,
+              "addr": 3549532021384,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "t",
+              "kind": "Port",
+              "source_file": "statements.sv",
+              "source_line": 9,
+              "source_column": 25,
+              "addr": 3549532021520,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "direction": "Out",
+              "internalSymbol": "3549532021640 t"
+            },
+            {
+              "name": "t",
+              "kind": "Variable",
+              "source_file": "statements.sv",
+              "source_line": 9,
+              "source_column": 25,
+              "addr": 3549532021640,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "",
+              "kind": "ContinuousAssign",
+              "source_file": "statements.sv",
+              "source_line": 11,
+              "source_column": 12,
+              "addr": 3549532021872,
+              "assignment": {
+                "source_file_start": "statements.sv",
+                "source_file_end": "statements.sv",
+                "source_line_start": 11,
+                "source_line_end": 13,
+                "source_column_start": 12,
+                "source_column_end": 17,
+                "kind": "Assignment",
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4309516008,
+                  "isSigned": false
+                },
+                "left": {
+                  "source_file_start": "statements.sv",
+                  "source_file_end": "statements.sv",
+                  "source_line_start": 11,
+                  "source_line_end": 11,
+                  "source_column_start": 12,
+                  "source_column_end": 13,
+                  "kind": "NamedValue",
+                  "type": {
+                    "name": "logic",
+                    "kind": "ScalarType",
+                    "addr": 4309516008,
+                    "isSigned": false
+                  },
+                  "symbol": "3549532020040 y"
+                },
+                "right": {
+                  "source_file_start": "statements.sv",
+                  "source_file_end": "statements.sv",
+                  "source_line_start": 11,
+                  "source_line_end": 13,
+                  "source_column_start": 16,
+                  "source_column_end": 17,
+                  "kind": "BinaryOp",
+                  "type": {
+                    "name": "logic",
+                    "kind": "ScalarType",
+                    "addr": 4309516008,
+                    "isSigned": false
+                  },
+                  "op": "BinaryOr",
+                  "left": {
+                    "source_file_start": "statements.sv",
+                    "source_file_end": "statements.sv",
+                    "source_line_start": 11,
+                    "source_line_end": 12,
+                    "source_column_start": 16,
+                    "source_column_end": 17,
+                    "kind": "BinaryOp",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4309516008,
+                      "isSigned": false
+                    },
+                    "op": "BinaryAnd",
+                    "left": {
+                      "source_file_start": "statements.sv",
+                      "source_file_end": "statements.sv",
+                      "source_line_start": 11,
+                      "source_line_end": 11,
+                      "source_column_start": 16,
+                      "source_column_end": 17,
+                      "kind": "NamedValue",
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4309516008,
+                        "isSigned": false
+                      },
+                      "symbol": "3549532018920 a"
+                    },
+                    "right": {
+                      "source_file_start": "statements.sv",
+                      "source_file_end": "statements.sv",
+                      "source_line_start": 12,
+                      "source_line_end": 12,
+                      "source_column_start": 16,
+                      "source_column_end": 17,
+                      "kind": "NamedValue",
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4309516008,
+                        "isSigned": false
+                      },
+                      "symbol": "3549532019200 b"
+                    }
+                  },
+                  "right": {
+                    "source_file_start": "statements.sv",
+                    "source_file_end": "statements.sv",
+                    "source_line_start": 13,
+                    "source_line_end": 13,
+                    "source_column_start": 16,
+                    "source_column_end": 17,
+                    "kind": "NamedValue",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4309516008,
+                      "isSigned": false
+                    },
+                    "symbol": "3549532018920 a"
+                  }
+                },
+                "isNonBlocking": false
+              }
+            },
+            {
+              "name": "",
+              "kind": "ProceduralBlock",
+              "source_file": "statements.sv",
+              "source_line": 16,
+              "source_column": 5,
+              "addr": 3549532017680,
+              "procedureKind": "AlwaysComb",
+              "body": {
+                "source_file_start": "statements.sv",
+                "source_file_end": "statements.sv",
+                "source_line_start": 16,
+                "source_line_end": 22,
+                "source_column_start": 17,
+                "source_column_end": 8,
+                "kind": "Block",
+                "blockKind": "Sequential",
+                "body": {
+                  "source_file_start": "statements.sv",
+                  "source_file_end": "statements.sv",
+                  "source_line_start": 16,
+                  "source_line_end": 22,
+                  "source_column_start": 17,
+                  "source_column_end": 8,
+                  "kind": "List",
+                  "list": [
+                    {
+                      "source_file_start": "statements.sv",
+                      "source_file_end": "statements.sv",
+                      "source_line_start": 17,
+                      "source_line_end": 17,
+                      "source_column_start": 9,
+                      "source_column_end": 18,
+                      "kind": "ExpressionStatement",
+                      "expr": {
+                        "source_file_start": "statements.sv",
+                        "source_file_end": "statements.sv",
+                        "source_line_start": 17,
+                        "source_line_end": 17,
+                        "source_column_start": 9,
+                        "source_column_end": 17,
+                        "kind": "Assignment",
+                        "type": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4309516008,
+                          "isSigned": false
+                        },
+                        "left": {
+                          "source_file_start": "statements.sv",
+                          "source_file_end": "statements.sv",
+                          "source_line_start": 17,
+                          "source_line_end": 17,
+                          "source_column_start": 9,
+                          "source_column_end": 10,
+                          "kind": "NamedValue",
+                          "type": {
+                            "name": "logic",
+                            "kind": "ScalarType",
+                            "addr": 4309516008,
+                            "isSigned": false
+                          },
+                          "symbol": "3549532020296 z"
+                        },
+                        "right": {
+                          "source_file_start": "statements.sv",
+                          "source_file_end": "statements.sv",
+                          "source_line_start": 17,
+                          "source_line_end": 17,
+                          "source_column_start": 13,
+                          "source_column_end": 17,
+                          "kind": "Conversion",
+                          "type": {
+                            "name": "logic",
+                            "kind": "ScalarType",
+                            "addr": 4309516008,
+                            "isSigned": false
+                          },
+                          "operand": {
+                            "source_file_start": "statements.sv",
+                            "source_file_end": "statements.sv",
+                            "source_line_start": 17,
+                            "source_line_end": 17,
+                            "source_column_start": 13,
+                            "source_column_end": 17,
+                            "kind": "IntegerLiteral",
+                            "type": {
+                              "name": "",
+                              "kind": "PackedArrayType",
+                              "addr": 3549532024032,
+                              "elementType": {
+                                "name": "bit",
+                                "kind": "ScalarType",
+                                "addr": 4309515928,
+                                "isSigned": false
+                              },
+                              "range": "[0:0]"
+                            },
+                            "value": "1'b0",
+                            "constant": "1'b0"
+                          },
+                          "constant": "1'b0"
+                        },
+                        "isNonBlocking": false
+                      }
+                    },
+                    {
+                      "source_file_start": "statements.sv",
+                      "source_file_end": "statements.sv",
+                      "source_line_start": 18,
+                      "source_line_end": 21,
+                      "source_column_start": 9,
+                      "source_column_end": 19,
+                      "kind": "Conditional",
+                      "conditions": [
+                        {
+                          "expr": {
+                            "source_file_start": "statements.sv",
+                            "source_file_end": "statements.sv",
+                            "source_line_start": 18,
+                            "source_line_end": 20,
+                            "source_column_start": 13,
+                            "source_column_end": 16,
+                            "kind": "BinaryOp",
+                            "type": {
+                              "name": "logic",
+                              "kind": "ScalarType",
+                              "addr": 4309516008,
+                              "isSigned": false
+                            },
+                            "op": "LogicalOr",
+                            "left": {
+                              "source_file_start": "statements.sv",
+                              "source_file_end": "statements.sv",
+                              "source_line_start": 18,
+                              "source_line_end": 19,
+                              "source_column_start": 13,
+                              "source_column_end": 14,
+                              "kind": "BinaryOp",
+                              "type": {
+                                "name": "logic",
+                                "kind": "ScalarType",
+                                "addr": 4309516008,
+                                "isSigned": false
+                              },
+                              "op": "LogicalAnd",
+                              "left": {
+                                "source_file_start": "statements.sv",
+                                "source_file_end": "statements.sv",
+                                "source_line_start": 18,
+                                "source_line_end": 18,
+                                "source_column_start": 13,
+                                "source_column_end": 16,
+                                "kind": "NamedValue",
+                                "type": {
+                                  "name": "logic",
+                                  "kind": "ScalarType",
+                                  "addr": 4309516008,
+                                  "isSigned": false
+                                },
+                                "symbol": "3549532019480 sel"
+                              },
+                              "right": {
+                                "source_file_start": "statements.sv",
+                                "source_file_end": "statements.sv",
+                                "source_line_start": 19,
+                                "source_line_end": 19,
+                                "source_column_start": 13,
+                                "source_column_end": 14,
+                                "kind": "NamedValue",
+                                "type": {
+                                  "name": "logic",
+                                  "kind": "ScalarType",
+                                  "addr": 4309516008,
+                                  "isSigned": false
+                                },
+                                "symbol": "3549532019760 k"
+                              }
+                            },
+                            "right": {
+                              "source_file_start": "statements.sv",
+                              "source_file_end": "statements.sv",
+                              "source_line_start": 20,
+                              "source_line_end": 20,
+                              "source_column_start": 13,
+                              "source_column_end": 16,
+                              "kind": "NamedValue",
+                              "type": {
+                                "name": "logic",
+                                "kind": "ScalarType",
+                                "addr": 4309516008,
+                                "isSigned": false
+                              },
+                              "symbol": "3549532019480 sel"
+                            }
+                          }
+                        }
+                      ],
+                      "check": "None",
+                      "ifTrue": {
+                        "source_file_start": "statements.sv",
+                        "source_file_end": "statements.sv",
+                        "source_line_start": 21,
+                        "source_line_end": 21,
+                        "source_column_start": 13,
+                        "source_column_end": 19,
+                        "kind": "ExpressionStatement",
+                        "expr": {
+                          "source_file_start": "statements.sv",
+                          "source_file_end": "statements.sv",
+                          "source_line_start": 21,
+                          "source_line_end": 21,
+                          "source_column_start": 13,
+                          "source_column_end": 18,
+                          "kind": "Assignment",
+                          "type": {
+                            "name": "logic",
+                            "kind": "ScalarType",
+                            "addr": 4309516008,
+                            "isSigned": false
+                          },
+                          "left": {
+                            "source_file_start": "statements.sv",
+                            "source_file_end": "statements.sv",
+                            "source_line_start": 21,
+                            "source_line_end": 21,
+                            "source_column_start": 13,
+                            "source_column_end": 14,
+                            "kind": "NamedValue",
+                            "type": {
+                              "name": "logic",
+                              "kind": "ScalarType",
+                              "addr": 4309516008,
+                              "isSigned": false
+                            },
+                            "symbol": "3549532020296 z"
+                          },
+                          "right": {
+                            "source_file_start": "statements.sv",
+                            "source_file_end": "statements.sv",
+                            "source_line_start": 21,
+                            "source_line_end": 21,
+                            "source_column_start": 17,
+                            "source_column_end": 18,
+                            "kind": "NamedValue",
+                            "type": {
+                              "name": "logic",
+                              "kind": "ScalarType",
+                              "addr": 4309516008,
+                              "isSigned": false
+                            },
+                            "symbol": "3549532019200 b"
+                          },
+                          "isNonBlocking": false
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "",
+              "kind": "ContinuousAssign",
+              "source_file": "statements.sv",
+              "source_line": 25,
+              "source_column": 12,
+              "addr": 3549532021952,
+              "assignment": {
+                "source_file_start": "statements.sv",
+                "source_file_end": "statements.sv",
+                "source_line_start": 25,
+                "source_line_end": 25,
+                "source_column_start": 12,
+                "source_column_end": 17,
+                "kind": "Assignment",
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4309516008,
+                  "isSigned": false
+                },
+                "left": {
+                  "source_file_start": "statements.sv",
+                  "source_file_end": "statements.sv",
+                  "source_line_start": 25,
+                  "source_line_end": 25,
+                  "source_column_start": 12,
+                  "source_column_end": 13,
+                  "kind": "NamedValue",
+                  "type": {
+                    "name": "logic",
+                    "kind": "ScalarType",
+                    "addr": 4309516008,
+                    "isSigned": false
+                  },
+                  "symbol": "3549532020552 w"
+                },
+                "right": {
+                  "source_file_start": "statements.sv",
+                  "source_file_end": "statements.sv",
+                  "source_line_start": 25,
+                  "source_line_end": 25,
+                  "source_column_start": 16,
+                  "source_column_end": 17,
+                  "kind": "NamedValue",
+                  "type": {
+                    "name": "logic",
+                    "kind": "ScalarType",
+                    "addr": 4309516008,
+                    "isSigned": false
+                  },
+                  "symbol": "3549532018920 a"
+                },
+                "isNonBlocking": false
+              }
+            },
+            {
+              "name": "",
+              "kind": "ContinuousAssign",
+              "source_file": "statements.sv",
+              "source_line": 26,
+              "source_column": 12,
+              "addr": 3549532022032,
+              "assignment": {
+                "source_file_start": "statements.sv",
+                "source_file_end": "statements.sv",
+                "source_line_start": 26,
+                "source_line_end": 26,
+                "source_column_start": 12,
+                "source_column_end": 18,
+                "kind": "Assignment",
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4309516008,
+                  "isSigned": false
+                },
+                "left": {
+                  "source_file_start": "statements.sv",
+                  "source_file_end": "statements.sv",
+                  "source_line_start": 26,
+                  "source_line_end": 26,
+                  "source_column_start": 12,
+                  "source_column_end": 13,
+                  "kind": "NamedValue",
+                  "type": {
+                    "name": "logic",
+                    "kind": "ScalarType",
+                    "addr": 4309516008,
+                    "isSigned": false
+                  },
+                  "symbol": "3549532020872 q"
+                },
+                "right": {
+                  "source_file_start": "statements.sv",
+                  "source_file_end": "statements.sv",
+                  "source_line_start": 26,
+                  "source_line_end": 26,
+                  "source_column_start": 16,
+                  "source_column_end": 18,
+                  "kind": "UnaryOp",
+                  "type": {
+                    "name": "logic",
+                    "kind": "ScalarType",
+                    "addr": 4309516008,
+                    "isSigned": false
+                  },
+                  "op": "BitwiseNot",
+                  "operand": {
+                    "source_file_start": "statements.sv",
+                    "source_file_end": "statements.sv",
+                    "source_line_start": 26,
+                    "source_line_end": 26,
+                    "source_column_start": 17,
+                    "source_column_end": 18,
+                    "kind": "NamedValue",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4309516008,
+                      "isSigned": false
+                    },
+                    "symbol": "3549532018920 a"
+                  }
+                },
+                "isNonBlocking": false
+              }
+            },
+            {
+              "name": "",
+              "kind": "ProceduralBlock",
+              "source_file": "statements.sv",
+              "source_line": 29,
+              "source_column": 5,
+              "addr": 3549532017912,
+              "procedureKind": "AlwaysComb",
+              "body": {
+                "source_file_start": "statements.sv",
+                "source_file_end": "statements.sv",
+                "source_line_start": 29,
+                "source_line_end": 36,
+                "source_column_start": 17,
+                "source_column_end": 8,
+                "kind": "Block",
+                "blockKind": "Sequential",
+                "body": {
+                  "source_file_start": "statements.sv",
+                  "source_file_end": "statements.sv",
+                  "source_line_start": 29,
+                  "source_line_end": 36,
+                  "source_column_start": 17,
+                  "source_column_end": 8,
+                  "kind": "List",
+                  "list": [
+                    {
+                      "source_file_start": "statements.sv",
+                      "source_file_end": "statements.sv",
+                      "source_line_start": 30,
+                      "source_line_end": 30,
+                      "source_column_start": 9,
+                      "source_column_end": 18,
+                      "kind": "ExpressionStatement",
+                      "expr": {
+                        "source_file_start": "statements.sv",
+                        "source_file_end": "statements.sv",
+                        "source_line_start": 30,
+                        "source_line_end": 30,
+                        "source_column_start": 9,
+                        "source_column_end": 17,
+                        "kind": "Assignment",
+                        "type": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4309516008,
+                          "isSigned": false
+                        },
+                        "left": {
+                          "source_file_start": "statements.sv",
+                          "source_file_end": "statements.sv",
+                          "source_line_start": 30,
+                          "source_line_end": 30,
+                          "source_column_start": 9,
+                          "source_column_end": 10,
+                          "kind": "NamedValue",
+                          "type": {
+                            "name": "logic",
+                            "kind": "ScalarType",
+                            "addr": 4309516008,
+                            "isSigned": false
+                          },
+                          "symbol": "3549532021128 r"
+                        },
+                        "right": {
+                          "source_file_start": "statements.sv",
+                          "source_file_end": "statements.sv",
+                          "source_line_start": 30,
+                          "source_line_end": 30,
+                          "source_column_start": 13,
+                          "source_column_end": 17,
+                          "kind": "Conversion",
+                          "type": {
+                            "name": "logic",
+                            "kind": "ScalarType",
+                            "addr": 4309516008,
+                            "isSigned": false
+                          },
+                          "operand": {
+                            "source_file_start": "statements.sv",
+                            "source_file_end": "statements.sv",
+                            "source_line_start": 30,
+                            "source_line_end": 30,
+                            "source_column_start": 13,
+                            "source_column_end": 17,
+                            "kind": "IntegerLiteral",
+                            "type": {
+                              "name": "",
+                              "kind": "PackedArrayType",
+                              "addr": 3549532024032,
+                              "elementType": {
+                                "name": "bit",
+                                "kind": "ScalarType",
+                                "addr": 4309515928,
+                                "isSigned": false
+                              },
+                              "range": "[0:0]"
+                            },
+                            "value": "1'b0",
+                            "constant": "1'b0"
+                          },
+                          "constant": "1'b0"
+                        },
+                        "isNonBlocking": false
+                      }
+                    },
+                    {
+                      "source_file_start": "statements.sv",
+                      "source_file_end": "statements.sv",
+                      "source_line_start": 31,
+                      "source_line_end": 35,
+                      "source_column_start": 9,
+                      "source_column_end": 16,
+                      "kind": "Case",
+                      "condition": "Normal",
+                      "check": "None",
+                      "expr": {
+                        "source_file_start": "statements.sv",
+                        "source_file_end": "statements.sv",
+                        "source_line_start": 31,
+                        "source_line_end": 31,
+                        "source_column_start": 15,
+                        "source_column_end": 18,
+                        "kind": "NamedValue",
+                        "type": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4309516008,
+                          "isSigned": false
+                        },
+                        "symbol": "3549532019480 sel"
+                      },
+                      "items": [
+                        {
+                          "expressions": [
+                            {
+                              "source_file_start": "statements.sv",
+                              "source_file_end": "statements.sv",
+                              "source_line_start": 32,
+                              "source_line_end": 32,
+                              "source_column_start": 13,
+                              "source_column_end": 14,
+                              "kind": "NamedValue",
+                              "type": {
+                                "name": "logic",
+                                "kind": "ScalarType",
+                                "addr": 4309516008,
+                                "isSigned": false
+                              },
+                              "symbol": "3549532018920 a"
+                            },
+                            {
+                              "source_file_start": "statements.sv",
+                              "source_file_end": "statements.sv",
+                              "source_line_start": 33,
+                              "source_line_end": 33,
+                              "source_column_start": 13,
+                              "source_column_end": 14,
+                              "kind": "NamedValue",
+                              "type": {
+                                "name": "logic",
+                                "kind": "ScalarType",
+                                "addr": 4309516008,
+                                "isSigned": false
+                              },
+                              "symbol": "3549532018920 a"
+                            }
+                          ],
+                          "stmt": {
+                            "source_file_start": "statements.sv",
+                            "source_file_end": "statements.sv",
+                            "source_line_start": 33,
+                            "source_line_end": 33,
+                            "source_column_start": 16,
+                            "source_column_end": 22,
+                            "kind": "ExpressionStatement",
+                            "expr": {
+                              "source_file_start": "statements.sv",
+                              "source_file_end": "statements.sv",
+                              "source_line_start": 33,
+                              "source_line_end": 33,
+                              "source_column_start": 16,
+                              "source_column_end": 21,
+                              "kind": "Assignment",
+                              "type": {
+                                "name": "logic",
+                                "kind": "ScalarType",
+                                "addr": 4309516008,
+                                "isSigned": false
+                              },
+                              "left": {
+                                "source_file_start": "statements.sv",
+                                "source_file_end": "statements.sv",
+                                "source_line_start": 33,
+                                "source_line_end": 33,
+                                "source_column_start": 16,
+                                "source_column_end": 17,
+                                "kind": "NamedValue",
+                                "type": {
+                                  "name": "logic",
+                                  "kind": "ScalarType",
+                                  "addr": 4309516008,
+                                  "isSigned": false
+                                },
+                                "symbol": "3549532021128 r"
+                              },
+                              "right": {
+                                "source_file_start": "statements.sv",
+                                "source_file_end": "statements.sv",
+                                "source_line_start": 33,
+                                "source_line_end": 33,
+                                "source_column_start": 20,
+                                "source_column_end": 21,
+                                "kind": "NamedValue",
+                                "type": {
+                                  "name": "logic",
+                                  "kind": "ScalarType",
+                                  "addr": 4309516008,
+                                  "isSigned": false
+                                },
+                                "symbol": "3549532019200 b"
+                              },
+                              "isNonBlocking": false
+                            }
+                          }
+                        }
+                      ],
+                      "defaultCase": {
+                        "source_file_start": "statements.sv",
+                        "source_file_end": "statements.sv",
+                        "source_line_start": 34,
+                        "source_line_end": 34,
+                        "source_column_start": 22,
+                        "source_column_end": 31,
+                        "kind": "ExpressionStatement",
+                        "expr": {
+                          "source_file_start": "statements.sv",
+                          "source_file_end": "statements.sv",
+                          "source_line_start": 34,
+                          "source_line_end": 34,
+                          "source_column_start": 22,
+                          "source_column_end": 30,
+                          "kind": "Assignment",
+                          "type": {
+                            "name": "logic",
+                            "kind": "ScalarType",
+                            "addr": 4309516008,
+                            "isSigned": false
+                          },
+                          "left": {
+                            "source_file_start": "statements.sv",
+                            "source_file_end": "statements.sv",
+                            "source_line_start": 34,
+                            "source_line_end": 34,
+                            "source_column_start": 22,
+                            "source_column_end": 23,
+                            "kind": "NamedValue",
+                            "type": {
+                              "name": "logic",
+                              "kind": "ScalarType",
+                              "addr": 4309516008,
+                              "isSigned": false
+                            },
+                            "symbol": "3549532021128 r"
+                          },
+                          "right": {
+                            "source_file_start": "statements.sv",
+                            "source_file_end": "statements.sv",
+                            "source_line_start": 34,
+                            "source_line_end": 34,
+                            "source_column_start": 26,
+                            "source_column_end": 30,
+                            "kind": "Conversion",
+                            "type": {
+                              "name": "logic",
+                              "kind": "ScalarType",
+                              "addr": 4309516008,
+                              "isSigned": false
+                            },
+                            "operand": {
+                              "source_file_start": "statements.sv",
+                              "source_file_end": "statements.sv",
+                              "source_line_start": 34,
+                              "source_line_end": 34,
+                              "source_column_start": 26,
+                              "source_column_end": 30,
+                              "kind": "IntegerLiteral",
+                              "type": {
+                                "name": "",
+                                "kind": "PackedArrayType",
+                                "addr": 3549532024032,
+                                "elementType": {
+                                  "name": "bit",
+                                  "kind": "ScalarType",
+                                  "addr": 4309515928,
+                                  "isSigned": false
+                                },
+                                "range": "[0:0]"
+                              },
+                              "value": "1'b1",
+                              "constant": "1'b1"
+                            },
+                            "constant": "1'b1"
+                          },
+                          "isNonBlocking": false
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "leaf_out",
+              "kind": "Variable",
+              "source_file": "statements.sv",
+              "source_line": 39,
+              "source_column": 11,
+              "addr": 3549532018016,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4309516008,
+                "isSigned": false
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "u",
+              "kind": "Instance",
+              "source_file": "statements.sv",
+              "source_line": 40,
+              "source_column": 10,
+              "addr": 3549532022112,
+              "body": {
+                "name": "leaf",
+                "kind": "InstanceBody",
+                "source_file": "statements.sv",
+                "source_line": 3,
+                "source_column": 8,
+                "addr": 3549532022240,
+                "members": [
+                  {
+                    "name": "i",
+                    "kind": "Port",
+                    "source_file": "statements.sv",
+                    "source_line": 3,
+                    "source_column": 31,
+                    "addr": 3549532027032,
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 3549532027808,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4309516008,
+                        "isSigned": false
+                      },
+                      "range": "[1:0]"
+                    },
+                    "direction": "In",
+                    "internalSymbol": "3549532027152 i"
+                  },
+                  {
+                    "name": "i",
+                    "kind": "Net",
+                    "source_file": "statements.sv",
+                    "source_line": 3,
+                    "source_column": 31,
+                    "addr": 3549532027152,
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 3549532027808,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4309516008,
+                        "isSigned": false
+                      },
+                      "range": "[1:0]"
+                    },
+                    "netType": {
+                      "name": "wire",
+                      "kind": "NetType",
+                      "addr": 3549522891296,
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4309516008,
+                        "isSigned": false
+                      }
+                    }
+                  },
+                  {
+                    "name": "o",
+                    "kind": "Port",
+                    "source_file": "statements.sv",
+                    "source_line": 3,
+                    "source_column": 47,
+                    "addr": 3549532027312,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4309516008,
+                      "isSigned": false
+                    },
+                    "direction": "Out",
+                    "internalSymbol": "3549532027432 o"
+                  },
+                  {
+                    "name": "o",
+                    "kind": "Variable",
+                    "source_file": "statements.sv",
+                    "source_line": 3,
+                    "source_column": 47,
+                    "addr": 3549532027432,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4309516008,
+                      "isSigned": false
+                    },
+                    "lifetime": "Static"
+                  },
+                  {
+                    "name": "",
+                    "kind": "ContinuousAssign",
+                    "source_file": "statements.sv",
+                    "source_line": 4,
+                    "source_column": 12,
+                    "addr": 3549532027584,
+                    "assignment": {
+                      "source_file_start": "statements.sv",
+                      "source_file_end": "statements.sv",
+                      "source_line_start": 4,
+                      "source_line_end": 4,
+                      "source_column_start": 12,
+                      "source_column_end": 27,
+                      "kind": "Assignment",
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4309516008,
+                        "isSigned": false
+                      },
+                      "left": {
+                        "source_file_start": "statements.sv",
+                        "source_file_end": "statements.sv",
+                        "source_line_start": 4,
+                        "source_line_end": 4,
+                        "source_column_start": 12,
+                        "source_column_end": 13,
+                        "kind": "NamedValue",
+                        "type": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4309516008,
+                          "isSigned": false
+                        },
+                        "symbol": "3549532027432 o"
+                      },
+                      "right": {
+                        "source_file_start": "statements.sv",
+                        "source_file_end": "statements.sv",
+                        "source_line_start": 4,
+                        "source_line_end": 4,
+                        "source_column_start": 16,
+                        "source_column_end": 27,
+                        "kind": "BinaryOp",
+                        "type": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4309516008,
+                          "isSigned": false
+                        },
+                        "op": "BinaryXor",
+                        "left": {
+                          "source_file_start": "statements.sv",
+                          "source_file_end": "statements.sv",
+                          "source_line_start": 4,
+                          "source_line_end": 4,
+                          "source_column_start": 16,
+                          "source_column_end": 20,
+                          "kind": "ElementSelect",
+                          "type": {
+                            "name": "logic",
+                            "kind": "ScalarType",
+                            "addr": 4309516008,
+                            "isSigned": false
+                          },
+                          "value": {
+                            "source_file_start": "statements.sv",
+                            "source_file_end": "statements.sv",
+                            "source_line_start": 4,
+                            "source_line_end": 4,
+                            "source_column_start": 16,
+                            "source_column_end": 17,
+                            "kind": "NamedValue",
+                            "type": {
+                              "name": "",
+                              "kind": "PackedArrayType",
+                              "addr": 3549532027808,
+                              "elementType": {
+                                "name": "logic",
+                                "kind": "ScalarType",
+                                "addr": 4309516008,
+                                "isSigned": false
+                              },
+                              "range": "[1:0]"
+                            },
+                            "symbol": "3549532027152 i"
+                          },
+                          "selector": {
+                            "source_file_start": "statements.sv",
+                            "source_file_end": "statements.sv",
+                            "source_line_start": 4,
+                            "source_line_end": 4,
+                            "source_column_start": 18,
+                            "source_column_end": 19,
+                            "kind": "IntegerLiteral",
+                            "type": {
+                              "name": "int",
+                              "kind": "PredefinedIntegerType",
+                              "addr": 4309516408
+                            },
+                            "value": "0",
+                            "constant": "0"
+                          }
+                        },
+                        "right": {
+                          "source_file_start": "statements.sv",
+                          "source_file_end": "statements.sv",
+                          "source_line_start": 4,
+                          "source_line_end": 4,
+                          "source_column_start": 23,
+                          "source_column_end": 27,
+                          "kind": "ElementSelect",
+                          "type": {
+                            "name": "logic",
+                            "kind": "ScalarType",
+                            "addr": 4309516008,
+                            "isSigned": false
+                          },
+                          "value": {
+                            "source_file_start": "statements.sv",
+                            "source_file_end": "statements.sv",
+                            "source_line_start": 4,
+                            "source_line_end": 4,
+                            "source_column_start": 23,
+                            "source_column_end": 24,
+                            "kind": "NamedValue",
+                            "type": {
+                              "name": "",
+                              "kind": "PackedArrayType",
+                              "addr": 3549532027808,
+                              "elementType": {
+                                "name": "logic",
+                                "kind": "ScalarType",
+                                "addr": 4309516008,
+                                "isSigned": false
+                              },
+                              "range": "[1:0]"
+                            },
+                            "symbol": "3549532027152 i"
+                          },
+                          "selector": {
+                            "source_file_start": "statements.sv",
+                            "source_file_end": "statements.sv",
+                            "source_line_start": 4,
+                            "source_line_end": 4,
+                            "source_column_start": 25,
+                            "source_column_end": 26,
+                            "kind": "IntegerLiteral",
+                            "type": {
+                              "name": "int",
+                              "kind": "PredefinedIntegerType",
+                              "addr": 4309516408
+                            },
+                            "value": "1",
+                            "constant": "1"
+                          }
+                        }
+                      },
+                      "isNonBlocking": false
+                    }
+                  }
+                ],
+                "definition": "3549524157184 leaf"
+              },
+              "connections": [
+                {
+                  "port": {
+                    "name": "i",
+                    "kind": "Port",
+                    "source_file": "statements.sv",
+                    "source_line": 3,
+                    "source_column": 31,
+                    "addr": 3549532027032,
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 3549532027808,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4309516008,
+                        "isSigned": false
+                      },
+                      "range": "[1:0]"
+                    },
+                    "direction": "In",
+                    "internalSymbol": "3549532027152 i"
+                  },
+                  "expr": {
+                    "source_file_start": "statements.sv",
+                    "source_file_end": "statements.sv",
+                    "source_line_start": 40,
+                    "source_line_end": 41,
+                    "source_column_start": 15,
+                    "source_column_end": 18,
+                    "kind": "Concatenation",
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 3549532027808,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4309516008,
+                        "isSigned": false
+                      },
+                      "range": "[1:0]"
+                    },
+                    "operands": [
+                      {
+                        "source_file_start": "statements.sv",
+                        "source_file_end": "statements.sv",
+                        "source_line_start": 40,
+                        "source_line_end": 40,
+                        "source_column_start": 16,
+                        "source_column_end": 17,
+                        "kind": "NamedValue",
+                        "type": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4309516008,
+                          "isSigned": false
+                        },
+                        "symbol": "3549532018920 a"
+                      },
+                      {
+                        "source_file_start": "statements.sv",
+                        "source_file_end": "statements.sv",
+                        "source_line_start": 41,
+                        "source_line_end": 41,
+                        "source_column_start": 16,
+                        "source_column_end": 17,
+                        "kind": "NamedValue",
+                        "type": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4309516008,
+                          "isSigned": false
+                        },
+                        "symbol": "3549532018920 a"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "port": {
+                    "name": "o",
+                    "kind": "Port",
+                    "source_file": "statements.sv",
+                    "source_line": 3,
+                    "source_column": 47,
+                    "addr": 3549532027312,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4309516008,
+                      "isSigned": false
+                    },
+                    "direction": "Out",
+                    "internalSymbol": "3549532027432 o"
+                  },
+                  "expr": {
+                    "source_file_start": "statements.sv",
+                    "source_file_end": "statements.sv",
+                    "source_line_start": 41,
+                    "source_line_end": 41,
+                    "source_column_start": 24,
+                    "source_column_end": 32,
+                    "kind": "Assignment",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4309516008,
+                      "isSigned": false
+                    },
+                    "left": {
+                      "source_file_start": "statements.sv",
+                      "source_file_end": "statements.sv",
+                      "source_line_start": 41,
+                      "source_line_end": 41,
+                      "source_column_start": 24,
+                      "source_column_end": 32,
+                      "kind": "NamedValue",
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4309516008,
+                        "isSigned": false
+                      },
+                      "symbol": "3549532018016 leaf_out"
+                    },
+                    "right": {
+                      "source_file_start": "statements.sv",
+                      "source_file_end": "statements.sv",
+                      "source_line_start": 41,
+                      "source_line_end": 41,
+                      "source_column_start": 24,
+                      "source_column_end": 32,
+                      "kind": "EmptyArgument",
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4309516008,
+                        "isSigned": false
+                      }
+                    },
+                    "isNonBlocking": false
+                  }
+                }
+              ]
+            },
+            {
+              "name": "",
+              "kind": "ContinuousAssign",
+              "source_file": "statements.sv",
+              "source_line": 42,
+              "source_column": 12,
+              "addr": 3549532022544,
+              "assignment": {
+                "source_file_start": "statements.sv",
+                "source_file_end": "statements.sv",
+                "source_line_start": 42,
+                "source_line_end": 42,
+                "source_column_start": 12,
+                "source_column_end": 24,
+                "kind": "Assignment",
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4309516008,
+                  "isSigned": false
+                },
+                "left": {
+                  "source_file_start": "statements.sv",
+                  "source_file_end": "statements.sv",
+                  "source_line_start": 42,
+                  "source_line_end": 42,
+                  "source_column_start": 12,
+                  "source_column_end": 13,
+                  "kind": "NamedValue",
+                  "type": {
+                    "name": "logic",
+                    "kind": "ScalarType",
+                    "addr": 4309516008,
+                    "isSigned": false
+                  },
+                  "symbol": "3549532021384 s"
+                },
+                "right": {
+                  "source_file_start": "statements.sv",
+                  "source_file_end": "statements.sv",
+                  "source_line_start": 42,
+                  "source_line_end": 42,
+                  "source_column_start": 16,
+                  "source_column_end": 24,
+                  "kind": "NamedValue",
+                  "type": {
+                    "name": "logic",
+                    "kind": "ScalarType",
+                    "addr": 4309516008,
+                    "isSigned": false
+                  },
+                  "symbol": "3549532018016 leaf_out"
+                },
+                "isNonBlocking": false
+              }
+            },
+            {
+              "name": "",
+              "kind": "ProceduralBlock",
+              "source_file": "statements.sv",
+              "source_line": 45,
+              "source_column": 5,
+              "addr": 3549532018280,
+              "procedureKind": "AlwaysFF",
+              "body": {
+                "source_file_start": "statements.sv",
+                "source_file_end": "statements.sv",
+                "source_line_start": 45,
+                "source_line_end": 47,
+                "source_column_start": 15,
+                "source_column_end": 16,
+                "kind": "Timed",
+                "timing": {
+                  "source_file_start": "statements.sv",
+                  "source_file_end": "statements.sv",
+                  "source_line_start": 45,
+                  "source_line_end": 45,
+                  "source_column_start": 17,
+                  "source_column_end": 28,
+                  "kind": "SignalEvent",
+                  "expr": {
+                    "source_file_start": "statements.sv",
+                    "source_file_end": "statements.sv",
+                    "source_line_start": 45,
+                    "source_line_end": 45,
+                    "source_column_start": 25,
+                    "source_column_end": 28,
+                    "kind": "NamedValue",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4309516008,
+                      "isSigned": false
+                    },
+                    "symbol": "3549532018640 clk"
+                  },
+                  "edge": "PosEdge"
+                },
+                "stmt": {
+                  "source_file_start": "statements.sv",
+                  "source_file_end": "statements.sv",
+                  "source_line_start": 46,
+                  "source_line_end": 47,
+                  "source_column_start": 9,
+                  "source_column_end": 16,
+                  "kind": "ExpressionStatement",
+                  "expr": {
+                    "source_file_start": "statements.sv",
+                    "source_file_end": "statements.sv",
+                    "source_line_start": 46,
+                    "source_line_end": 47,
+                    "source_column_start": 9,
+                    "source_column_end": 15,
+                    "kind": "Assignment",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4309516008,
+                      "isSigned": false
+                    },
+                    "left": {
+                      "source_file_start": "statements.sv",
+                      "source_file_end": "statements.sv",
+                      "source_line_start": 46,
+                      "source_line_end": 46,
+                      "source_column_start": 9,
+                      "source_column_end": 10,
+                      "kind": "NamedValue",
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4309516008,
+                        "isSigned": false
+                      },
+                      "symbol": "3549532021640 t"
+                    },
+                    "right": {
+                      "source_file_start": "statements.sv",
+                      "source_file_end": "statements.sv",
+                      "source_line_start": 46,
+                      "source_line_end": 47,
+                      "source_column_start": 14,
+                      "source_column_end": 15,
+                      "kind": "BinaryOp",
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4309516008,
+                        "isSigned": false
+                      },
+                      "op": "BinaryAnd",
+                      "left": {
+                        "source_file_start": "statements.sv",
+                        "source_file_end": "statements.sv",
+                        "source_line_start": 46,
+                        "source_line_end": 46,
+                        "source_column_start": 14,
+                        "source_column_end": 15,
+                        "kind": "NamedValue",
+                        "type": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4309516008,
+                          "isSigned": false
+                        },
+                        "symbol": "3549532018920 a"
+                      },
+                      "right": {
+                        "source_file_start": "statements.sv",
+                        "source_file_end": "statements.sv",
+                        "source_line_start": 47,
+                        "source_line_end": 47,
+                        "source_column_start": 14,
+                        "source_column_end": 15,
+                        "kind": "NamedValue",
+                        "type": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4309516008,
+                          "isSigned": false
+                        },
+                        "symbol": "3549532018920 a"
+                      }
+                    },
+                    "isNonBlocking": true
+                  }
+                }
+              }
+            }
+          ],
+          "definition": "3549524157952 top"
+        },
+        "connections": [
+        ]
+      }
+    ]
+  },
+  "definitions": [
+    {
+      "name": "leaf",
+      "kind": "Definition",
+      "source_file": "statements.sv",
+      "source_line": 3,
+      "source_column": 8,
+      "addr": 3549524157184,
+      "defaultNetType": "3549522891296 wire",
+      "definitionKind": "Module",
+      "defaultLifetime": "Static",
+      "unconnectedDrive": "None",
+      "cellDefine": false
+    },
+    {
+      "name": "top",
+      "kind": "Definition",
+      "source_file": "statements.sv",
+      "source_line": 7,
+      "source_column": 8,
+      "addr": 3549524157952,
+      "defaultNetType": "3549522891296 wire",
+      "definitionKind": "Module",
+      "defaultLifetime": "Static",
+      "unconnectedDrive": "None",
+      "cellDefine": false
+    }
+  ]
+}

@@ -1,0 +1,151 @@
+{
+  "design": {
+    "name": "$root",
+    "kind": "Root",
+    "addr": 6142609398496,
+    "members": [
+      {
+        "name": "",
+        "kind": "CompilationUnit",
+        "addr": 6142618509776
+      },
+      {
+        "name": "top",
+        "kind": "Instance",
+        "source_file": "cone_undriven.sv",
+        "source_line": 3,
+        "source_column": 8,
+        "addr": 6142618510696,
+        "body": {
+          "name": "top",
+          "kind": "InstanceBody",
+          "source_file": "cone_undriven.sv",
+          "source_line": 3,
+          "source_column": 8,
+          "addr": 6142618510048,
+          "members": [
+            {
+              "name": "undriven",
+              "kind": "Variable",
+              "source_file": "cone_undriven.sv",
+              "source_line": 4,
+              "source_column": 11,
+              "addr": 6142618510224,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4375805672,
+                "isSigned": false
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "unused",
+              "kind": "Variable",
+              "source_file": "cone_undriven.sv",
+              "source_line": 5,
+              "source_column": 11,
+              "addr": 6142618510360,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4375805672,
+                "isSigned": false
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "result",
+              "kind": "Variable",
+              "source_file": "cone_undriven.sv",
+              "source_line": 6,
+              "source_column": 11,
+              "addr": 6142618510496,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4375805672,
+                "isSigned": false
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "",
+              "kind": "ContinuousAssign",
+              "source_file": "cone_undriven.sv",
+              "source_line": 7,
+              "source_column": 12,
+              "addr": 6142618510832,
+              "assignment": {
+                "source_file_start": "cone_undriven.sv",
+                "source_file_end": "cone_undriven.sv",
+                "source_line_start": 7,
+                "source_line_end": 7,
+                "source_column_start": 12,
+                "source_column_end": 29,
+                "kind": "Assignment",
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4375805672,
+                  "isSigned": false
+                },
+                "left": {
+                  "source_file_start": "cone_undriven.sv",
+                  "source_file_end": "cone_undriven.sv",
+                  "source_line_start": 7,
+                  "source_line_end": 7,
+                  "source_column_start": 12,
+                  "source_column_end": 18,
+                  "kind": "NamedValue",
+                  "type": {
+                    "name": "logic",
+                    "kind": "ScalarType",
+                    "addr": 4375805672,
+                    "isSigned": false
+                  },
+                  "symbol": "6142618510496 result"
+                },
+                "right": {
+                  "source_file_start": "cone_undriven.sv",
+                  "source_file_end": "cone_undriven.sv",
+                  "source_line_start": 7,
+                  "source_line_end": 7,
+                  "source_column_start": 21,
+                  "source_column_end": 29,
+                  "kind": "NamedValue",
+                  "type": {
+                    "name": "logic",
+                    "kind": "ScalarType",
+                    "addr": 4375805672,
+                    "isSigned": false
+                  },
+                  "symbol": "6142618510224 undriven"
+                },
+                "isNonBlocking": false
+              }
+            }
+          ],
+          "definition": "6142610662144 top"
+        },
+        "connections": [
+        ]
+      }
+    ]
+  },
+  "definitions": [
+    {
+      "name": "top",
+      "kind": "Definition",
+      "source_file": "cone_undriven.sv",
+      "source_line": 3,
+      "source_column": 8,
+      "addr": 6142610662144,
+      "defaultNetType": "6142609396256 wire",
+      "definitionKind": "Module",
+      "defaultLifetime": "Static",
+      "unconnectedDrive": "None",
+      "cellDefine": false
+    }
+  ]
+}

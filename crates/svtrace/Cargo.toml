@@ -1,0 +1,15 @@
+[package]
+name = "svtrace"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+log.workspace = true
+env_logger.workspace = true
+serde.workspace = true
+serde_json = { workspace = true, features = ["unbounded_depth"] }
+serde_stacker = "0.1"
+stacker = "0.1"
+lsp-server.workspace = true

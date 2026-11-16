@@ -1,0 +1,2248 @@
+{
+  "design": {
+    "name": "$root",
+    "kind": "Root",
+    "addr": 6349036264160,
+    "members": [
+      {
+        "name": "",
+        "kind": "CompilationUnit",
+        "addr": 6349045387728
+      },
+      {
+        "name": "clk_top",
+        "kind": "Instance",
+        "source_file": "clocks.sv",
+        "source_line": 25,
+        "source_column": 8,
+        "addr": 6349045388568,
+        "body": {
+          "name": "clk_top",
+          "kind": "InstanceBody",
+          "source_file": "clocks.sv",
+          "source_line": 25,
+          "source_column": 8,
+          "addr": 6349045388000,
+          "members": [
+            {
+              "name": "clk",
+              "kind": "Port",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 28,
+              "addr": 6349045388704,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4307779304,
+                "isSigned": false
+              },
+              "direction": "In",
+              "internalSymbol": "6349045388824 clk"
+            },
+            {
+              "name": "clk",
+              "kind": "Net",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 28,
+              "addr": 6349045388824,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4307779304,
+                "isSigned": false
+              },
+              "netType": {
+                "name": "wire",
+                "kind": "NetType",
+                "addr": 6349036261920,
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4307779304,
+                  "isSigned": false
+                }
+              }
+            },
+            {
+              "name": "rst_n",
+              "kind": "Port",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 45,
+              "addr": 6349045388984,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4307779304,
+                "isSigned": false
+              },
+              "direction": "In",
+              "internalSymbol": "6349045389104 rst_n"
+            },
+            {
+              "name": "rst_n",
+              "kind": "Net",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 45,
+              "addr": 6349045389104,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4307779304,
+                "isSigned": false
+              },
+              "netType": {
+                "name": "wire",
+                "kind": "NetType",
+                "addr": 6349036261920,
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4307779304,
+                  "isSigned": false
+                }
+              }
+            },
+            {
+              "name": "en",
+              "kind": "Port",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 64,
+              "addr": 6349045389264,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4307779304,
+                "isSigned": false
+              },
+              "direction": "In",
+              "internalSymbol": "6349045389384 en"
+            },
+            {
+              "name": "en",
+              "kind": "Net",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 64,
+              "addr": 6349045389384,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4307779304,
+                "isSigned": false
+              },
+              "netType": {
+                "name": "wire",
+                "kind": "NetType",
+                "addr": 6349036261920,
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4307779304,
+                  "isSigned": false
+                }
+              }
+            },
+            {
+              "name": "a",
+              "kind": "Port",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 86,
+              "addr": 6349045389544,
+              "type": {
+                "name": "",
+                "kind": "PackedArrayType",
+                "addr": 6349045392888,
+                "elementType": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4307779304,
+                  "isSigned": false
+                },
+                "range": "[3:0]"
+              },
+              "direction": "In",
+              "internalSymbol": "6349045389664 a"
+            },
+            {
+              "name": "a",
+              "kind": "Net",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 86,
+              "addr": 6349045389664,
+              "type": {
+                "name": "",
+                "kind": "PackedArrayType",
+                "addr": 6349045392888,
+                "elementType": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4307779304,
+                  "isSigned": false
+                },
+                "range": "[3:0]"
+              },
+              "netType": {
+                "name": "wire",
+                "kind": "NetType",
+                "addr": 6349036261920,
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4307779304,
+                  "isSigned": false
+                }
+              }
+            },
+            {
+              "name": "reg_q",
+              "kind": "Port",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 108,
+              "addr": 6349045389824,
+              "type": {
+                "name": "",
+                "kind": "PackedArrayType",
+                "addr": 6349045392888,
+                "elementType": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4307779304,
+                  "isSigned": false
+                },
+                "range": "[3:0]"
+              },
+              "direction": "Out",
+              "internalSymbol": "6349045389944 reg_q"
+            },
+            {
+              "name": "reg_q",
+              "kind": "Variable",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 108,
+              "addr": 6349045389944,
+              "type": {
+                "name": "",
+                "kind": "PackedArrayType",
+                "addr": 6349045392888,
+                "elementType": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4307779304,
+                  "isSigned": false
+                },
+                "range": "[3:0]"
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "comb_o",
+              "kind": "Port",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 134,
+              "addr": 6349045390080,
+              "type": {
+                "name": "",
+                "kind": "PackedArrayType",
+                "addr": 6349045392888,
+                "elementType": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4307779304,
+                  "isSigned": false
+                },
+                "range": "[3:0]"
+              },
+              "direction": "Out",
+              "internalSymbol": "6349045390200 comb_o"
+            },
+            {
+              "name": "comb_o",
+              "kind": "Variable",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 134,
+              "addr": 6349045390200,
+              "type": {
+                "name": "",
+                "kind": "PackedArrayType",
+                "addr": 6349045392888,
+                "elementType": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4307779304,
+                  "isSigned": false
+                },
+                "range": "[3:0]"
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "din",
+              "kind": "Port",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 154,
+              "addr": 6349045390336,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4307779304,
+                "isSigned": false
+              },
+              "direction": "In",
+              "internalSymbol": "6349045390456 din"
+            },
+            {
+              "name": "din",
+              "kind": "Net",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 154,
+              "addr": 6349045390456,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4307779304,
+                "isSigned": false
+              },
+              "netType": {
+                "name": "wire",
+                "kind": "NetType",
+                "addr": 6349036261920,
+                "type": {
+                  "name": "logic",
+                  "kind": "ScalarType",
+                  "addr": 4307779304,
+                  "isSigned": false
+                }
+              }
+            },
+            {
+              "name": "dout",
+              "kind": "Port",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 172,
+              "addr": 6349045390616,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4307779304,
+                "isSigned": false
+              },
+              "direction": "Out",
+              "internalSymbol": "6349045390736 dout"
+            },
+            {
+              "name": "dout",
+              "kind": "Variable",
+              "source_file": "clocks.sv",
+              "source_line": 25,
+              "source_column": 172,
+              "addr": 6349045390736,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4307779304,
+                "isSigned": false
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "u_mixed",
+              "kind": "Instance",
+              "source_file": "clocks.sv",
+              "source_line": 26,
+              "source_column": 11,
+              "addr": 6349045390936,
+              "body": {
+                "name": "mixed",
+                "kind": "InstanceBody",
+                "source_file": "clocks.sv",
+                "source_line": 3,
+                "source_column": 8,
+                "addr": 6349045391064,
+                "members": [
+                  {
+                    "name": "clk",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 4,
+                    "source_column": 17,
+                    "addr": 6349045393624,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045393744 clk"
+                  },
+                  {
+                    "name": "clk",
+                    "kind": "Net",
+                    "source_file": "clocks.sv",
+                    "source_line": 4,
+                    "source_column": 17,
+                    "addr": 6349045393744,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "netType": {
+                      "name": "wire",
+                      "kind": "NetType",
+                      "addr": 6349036261920,
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      }
+                    }
+                  },
+                  {
+                    "name": "rst_n",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 5,
+                    "source_column": 17,
+                    "addr": 6349045393904,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045394024 rst_n"
+                  },
+                  {
+                    "name": "rst_n",
+                    "kind": "Net",
+                    "source_file": "clocks.sv",
+                    "source_line": 5,
+                    "source_column": 17,
+                    "addr": 6349045394024,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "netType": {
+                      "name": "wire",
+                      "kind": "NetType",
+                      "addr": 6349036261920,
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      }
+                    }
+                  },
+                  {
+                    "name": "en",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 6,
+                    "source_column": 17,
+                    "addr": 6349045394184,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045394304 en"
+                  },
+                  {
+                    "name": "en",
+                    "kind": "Net",
+                    "source_file": "clocks.sv",
+                    "source_line": 6,
+                    "source_column": 17,
+                    "addr": 6349045394304,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "netType": {
+                      "name": "wire",
+                      "kind": "NetType",
+                      "addr": 6349036261920,
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      }
+                    }
+                  },
+                  {
+                    "name": "a",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 7,
+                    "source_column": 23,
+                    "addr": 6349045394464,
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 6349045392888,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      },
+                      "range": "[3:0]"
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045394584 a"
+                  },
+                  {
+                    "name": "a",
+                    "kind": "Net",
+                    "source_file": "clocks.sv",
+                    "source_line": 7,
+                    "source_column": 23,
+                    "addr": 6349045394584,
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 6349045392888,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      },
+                      "range": "[3:0]"
+                    },
+                    "netType": {
+                      "name": "wire",
+                      "kind": "NetType",
+                      "addr": 6349036261920,
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      }
+                    }
+                  },
+                  {
+                    "name": "reg_q",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 8,
+                    "source_column": 24,
+                    "addr": 6349045394744,
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 6349045392888,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      },
+                      "range": "[3:0]"
+                    },
+                    "direction": "Out",
+                    "internalSymbol": "6349045394864 reg_q"
+                  },
+                  {
+                    "name": "reg_q",
+                    "kind": "Variable",
+                    "source_file": "clocks.sv",
+                    "source_line": 8,
+                    "source_column": 24,
+                    "addr": 6349045394864,
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 6349045392888,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      },
+                      "range": "[3:0]"
+                    },
+                    "lifetime": "Static"
+                  },
+                  {
+                    "name": "comb_o",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 9,
+                    "source_column": 24,
+                    "addr": 6349045395000,
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 6349045392888,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      },
+                      "range": "[3:0]"
+                    },
+                    "direction": "Out",
+                    "internalSymbol": "6349045395120 comb_o"
+                  },
+                  {
+                    "name": "comb_o",
+                    "kind": "Variable",
+                    "source_file": "clocks.sv",
+                    "source_line": 9,
+                    "source_column": 24,
+                    "addr": 6349045395120,
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 6349045392888,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      },
+                      "range": "[3:0]"
+                    },
+                    "lifetime": "Static"
+                  },
+                  {
+                    "name": "",
+                    "kind": "ProceduralBlock",
+                    "source_file": "clocks.sv",
+                    "source_line": 11,
+                    "source_column": 5,
+                    "addr": 6349045391376,
+                    "procedureKind": "AlwaysFF",
+                    "body": {
+                      "source_file_start": "clocks.sv",
+                      "source_file_end": "clocks.sv",
+                      "source_line_start": 11,
+                      "source_line_end": 14,
+                      "source_column_start": 15,
+                      "source_column_end": 8,
+                      "kind": "Timed",
+                      "timing": {
+                        "source_file_start": "clocks.sv",
+                        "source_file_end": "clocks.sv",
+                        "source_line_start": 11,
+                        "source_line_end": 11,
+                        "source_column_start": 16,
+                        "source_column_end": 46,
+                        "kind": "EventList",
+                        "events": [
+                          {
+                            "source_file_start": "clocks.sv",
+                            "source_file_end": "clocks.sv",
+                            "source_line_start": 11,
+                            "source_line_end": 11,
+                            "source_column_start": 17,
+                            "source_column_end": 28,
+                            "kind": "SignalEvent",
+                            "expr": {
+                              "source_file_start": "clocks.sv",
+                              "source_file_end": "clocks.sv",
+                              "source_line_start": 11,
+                              "source_line_end": 11,
+                              "source_column_start": 25,
+                              "source_column_end": 28,
+                              "kind": "NamedValue",
+                              "type": {
+                                "name": "logic",
+                                "kind": "ScalarType",
+                                "addr": 4307779304,
+                                "isSigned": false
+                              },
+                              "symbol": "6349045393744 clk"
+                            },
+                            "edge": "PosEdge"
+                          },
+                          {
+                            "source_file_start": "clocks.sv",
+                            "source_file_end": "clocks.sv",
+                            "source_line_start": 11,
+                            "source_line_end": 11,
+                            "source_column_start": 32,
+                            "source_column_end": 45,
+                            "kind": "SignalEvent",
+                            "expr": {
+                              "source_file_start": "clocks.sv",
+                              "source_file_end": "clocks.sv",
+                              "source_line_start": 11,
+                              "source_line_end": 11,
+                              "source_column_start": 40,
+                              "source_column_end": 45,
+                              "kind": "NamedValue",
+                              "type": {
+                                "name": "logic",
+                                "kind": "ScalarType",
+                                "addr": 4307779304,
+                                "isSigned": false
+                              },
+                              "symbol": "6349045394024 rst_n"
+                            },
+                            "edge": "NegEdge"
+                          }
+                        ]
+                      },
+                      "stmt": {
+                        "source_file_start": "clocks.sv",
+                        "source_file_end": "clocks.sv",
+                        "source_line_start": 12,
+                        "source_line_end": 13,
+                        "source_column_start": 9,
+                        "source_column_end": 33,
+                        "kind": "Block",
+                        "blockKind": "Sequential",
+                        "body": {
+                          "source_file_start": "clocks.sv",
+                          "source_file_end": "clocks.sv",
+                          "source_line_start": 12,
+                          "source_line_end": 13,
+                          "source_column_start": 9,
+                          "source_column_end": 33,
+                          "kind": "Conditional",
+                          "conditions": [
+                            {
+                              "expr": {
+                                "source_file_start": "clocks.sv",
+                                "source_file_end": "clocks.sv",
+                                "source_line_start": 12,
+                                "source_line_end": 12,
+                                "source_column_start": 13,
+                                "source_column_end": 19,
+                                "kind": "UnaryOp",
+                                "type": {
+                                  "name": "logic",
+                                  "kind": "ScalarType",
+                                  "addr": 4307779304,
+                                  "isSigned": false
+                                },
+                                "op": "LogicalNot",
+                                "operand": {
+                                  "source_file_start": "clocks.sv",
+                                  "source_file_end": "clocks.sv",
+                                  "source_line_start": 12,
+                                  "source_line_end": 12,
+                                  "source_column_start": 14,
+                                  "source_column_end": 19,
+                                  "kind": "NamedValue",
+                                  "type": {
+                                    "name": "logic",
+                                    "kind": "ScalarType",
+                                    "addr": 4307779304,
+                                    "isSigned": false
+                                  },
+                                  "symbol": "6349045394024 rst_n"
+                                }
+                              }
+                            }
+                          ],
+                          "check": "None",
+                          "ifTrue": {
+                            "source_file_start": "clocks.sv",
+                            "source_file_end": "clocks.sv",
+                            "source_line_start": 12,
+                            "source_line_end": 12,
+                            "source_column_start": 21,
+                            "source_column_end": 33,
+                            "kind": "ExpressionStatement",
+                            "expr": {
+                              "source_file_start": "clocks.sv",
+                              "source_file_end": "clocks.sv",
+                              "source_line_start": 12,
+                              "source_line_end": 12,
+                              "source_column_start": 21,
+                              "source_column_end": 32,
+                              "kind": "Assignment",
+                              "type": {
+                                "name": "",
+                                "kind": "PackedArrayType",
+                                "addr": 6349045392888,
+                                "elementType": {
+                                  "name": "logic",
+                                  "kind": "ScalarType",
+                                  "addr": 4307779304,
+                                  "isSigned": false
+                                },
+                                "range": "[3:0]"
+                              },
+                              "left": {
+                                "source_file_start": "clocks.sv",
+                                "source_file_end": "clocks.sv",
+                                "source_line_start": 12,
+                                "source_line_end": 12,
+                                "source_column_start": 21,
+                                "source_column_end": 26,
+                                "kind": "NamedValue",
+                                "type": {
+                                  "name": "",
+                                  "kind": "PackedArrayType",
+                                  "addr": 6349045392888,
+                                  "elementType": {
+                                    "name": "logic",
+                                    "kind": "ScalarType",
+                                    "addr": 4307779304,
+                                    "isSigned": false
+                                  },
+                                  "range": "[3:0]"
+                                },
+                                "symbol": "6349045394864 reg_q"
+                              },
+                              "right": {
+                                "source_file_start": "clocks.sv",
+                                "source_file_end": "clocks.sv",
+                                "source_line_start": 12,
+                                "source_line_end": 12,
+                                "source_column_start": 30,
+                                "source_column_end": 32,
+                                "kind": "UnbasedUnsizedIntegerLiteral",
+                                "type": {
+                                  "name": "",
+                                  "kind": "PackedArrayType",
+                                  "addr": 6349045392888,
+                                  "elementType": {
+                                    "name": "logic",
+                                    "kind": "ScalarType",
+                                    "addr": 4307779304,
+                                    "isSigned": false
+                                  },
+                                  "range": "[3:0]"
+                                },
+                                "value": "4'b0"
+                              },
+                              "isNonBlocking": true
+                            }
+                          },
+                          "ifFalse": {
+                            "source_file_start": "clocks.sv",
+                            "source_file_end": "clocks.sv",
+                            "source_line_start": 13,
+                            "source_line_end": 13,
+                            "source_column_start": 14,
+                            "source_column_end": 33,
+                            "kind": "Conditional",
+                            "conditions": [
+                              {
+                                "expr": {
+                                  "source_file_start": "clocks.sv",
+                                  "source_file_end": "clocks.sv",
+                                  "source_line_start": 13,
+                                  "source_line_end": 13,
+                                  "source_column_start": 18,
+                                  "source_column_end": 20,
+                                  "kind": "NamedValue",
+                                  "type": {
+                                    "name": "logic",
+                                    "kind": "ScalarType",
+                                    "addr": 4307779304,
+                                    "isSigned": false
+                                  },
+                                  "symbol": "6349045394304 en"
+                                }
+                              }
+                            ],
+                            "check": "None",
+                            "ifTrue": {
+                              "source_file_start": "clocks.sv",
+                              "source_file_end": "clocks.sv",
+                              "source_line_start": 13,
+                              "source_line_end": 13,
+                              "source_column_start": 22,
+                              "source_column_end": 33,
+                              "kind": "ExpressionStatement",
+                              "expr": {
+                                "source_file_start": "clocks.sv",
+                                "source_file_end": "clocks.sv",
+                                "source_line_start": 13,
+                                "source_line_end": 13,
+                                "source_column_start": 22,
+                                "source_column_end": 32,
+                                "kind": "Assignment",
+                                "type": {
+                                  "name": "",
+                                  "kind": "PackedArrayType",
+                                  "addr": 6349045392888,
+                                  "elementType": {
+                                    "name": "logic",
+                                    "kind": "ScalarType",
+                                    "addr": 4307779304,
+                                    "isSigned": false
+                                  },
+                                  "range": "[3:0]"
+                                },
+                                "left": {
+                                  "source_file_start": "clocks.sv",
+                                  "source_file_end": "clocks.sv",
+                                  "source_line_start": 13,
+                                  "source_line_end": 13,
+                                  "source_column_start": 22,
+                                  "source_column_end": 27,
+                                  "kind": "NamedValue",
+                                  "type": {
+                                    "name": "",
+                                    "kind": "PackedArrayType",
+                                    "addr": 6349045392888,
+                                    "elementType": {
+                                      "name": "logic",
+                                      "kind": "ScalarType",
+                                      "addr": 4307779304,
+                                      "isSigned": false
+                                    },
+                                    "range": "[3:0]"
+                                  },
+                                  "symbol": "6349045394864 reg_q"
+                                },
+                                "right": {
+                                  "source_file_start": "clocks.sv",
+                                  "source_file_end": "clocks.sv",
+                                  "source_line_start": 13,
+                                  "source_line_end": 13,
+                                  "source_column_start": 31,
+                                  "source_column_end": 32,
+                                  "kind": "NamedValue",
+                                  "type": {
+                                    "name": "",
+                                    "kind": "PackedArrayType",
+                                    "addr": 6349045392888,
+                                    "elementType": {
+                                      "name": "logic",
+                                      "kind": "ScalarType",
+                                      "addr": 4307779304,
+                                      "isSigned": false
+                                    },
+                                    "range": "[3:0]"
+                                  },
+                                  "symbol": "6349045394584 a"
+                                },
+                                "isNonBlocking": true
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "name": "",
+                    "kind": "ProceduralBlock",
+                    "source_file": "clocks.sv",
+                    "source_line": 16,
+                    "source_column": 5,
+                    "addr": 6349045391480,
+                    "procedureKind": "AlwaysComb",
+                    "body": {
+                      "source_file_start": "clocks.sv",
+                      "source_file_end": "clocks.sv",
+                      "source_line_start": 17,
+                      "source_line_end": 17,
+                      "source_column_start": 9,
+                      "source_column_end": 27,
+                      "kind": "Block",
+                      "blockKind": "Sequential",
+                      "body": {
+                        "source_file_start": "clocks.sv",
+                        "source_file_end": "clocks.sv",
+                        "source_line_start": 17,
+                        "source_line_end": 17,
+                        "source_column_start": 9,
+                        "source_column_end": 27,
+                        "kind": "ExpressionStatement",
+                        "expr": {
+                          "source_file_start": "clocks.sv",
+                          "source_file_end": "clocks.sv",
+                          "source_line_start": 17,
+                          "source_line_end": 17,
+                          "source_column_start": 9,
+                          "source_column_end": 26,
+                          "kind": "Assignment",
+                          "type": {
+                            "name": "",
+                            "kind": "PackedArrayType",
+                            "addr": 6349045392888,
+                            "elementType": {
+                              "name": "logic",
+                              "kind": "ScalarType",
+                              "addr": 4307779304,
+                              "isSigned": false
+                            },
+                            "range": "[3:0]"
+                          },
+                          "left": {
+                            "source_file_start": "clocks.sv",
+                            "source_file_end": "clocks.sv",
+                            "source_line_start": 17,
+                            "source_line_end": 17,
+                            "source_column_start": 9,
+                            "source_column_end": 15,
+                            "kind": "NamedValue",
+                            "type": {
+                              "name": "",
+                              "kind": "PackedArrayType",
+                              "addr": 6349045392888,
+                              "elementType": {
+                                "name": "logic",
+                                "kind": "ScalarType",
+                                "addr": 4307779304,
+                                "isSigned": false
+                              },
+                              "range": "[3:0]"
+                            },
+                            "symbol": "6349045395120 comb_o"
+                          },
+                          "right": {
+                            "source_file_start": "clocks.sv",
+                            "source_file_end": "clocks.sv",
+                            "source_line_start": 17,
+                            "source_line_end": 17,
+                            "source_column_start": 18,
+                            "source_column_end": 26,
+                            "kind": "BinaryOp",
+                            "type": {
+                              "name": "",
+                              "kind": "PackedArrayType",
+                              "addr": 6349045392888,
+                              "elementType": {
+                                "name": "logic",
+                                "kind": "ScalarType",
+                                "addr": 4307779304,
+                                "isSigned": false
+                              },
+                              "range": "[3:0]"
+                            },
+                            "op": "Add",
+                            "left": {
+                              "source_file_start": "clocks.sv",
+                              "source_file_end": "clocks.sv",
+                              "source_line_start": 17,
+                              "source_line_end": 17,
+                              "source_column_start": 18,
+                              "source_column_end": 19,
+                              "kind": "NamedValue",
+                              "type": {
+                                "name": "",
+                                "kind": "PackedArrayType",
+                                "addr": 6349045392888,
+                                "elementType": {
+                                  "name": "logic",
+                                  "kind": "ScalarType",
+                                  "addr": 4307779304,
+                                  "isSigned": false
+                                },
+                                "range": "[3:0]"
+                              },
+                              "symbol": "6349045394584 a"
+                            },
+                            "right": {
+                              "source_file_start": "clocks.sv",
+                              "source_file_end": "clocks.sv",
+                              "source_line_start": 17,
+                              "source_line_end": 17,
+                              "source_column_start": 22,
+                              "source_column_end": 26,
+                              "kind": "Conversion",
+                              "type": {
+                                "name": "",
+                                "kind": "PackedArrayType",
+                                "addr": 6349045392888,
+                                "elementType": {
+                                  "name": "logic",
+                                  "kind": "ScalarType",
+                                  "addr": 4307779304,
+                                  "isSigned": false
+                                },
+                                "range": "[3:0]"
+                              },
+                              "operand": {
+                                "source_file_start": "clocks.sv",
+                                "source_file_end": "clocks.sv",
+                                "source_line_start": 17,
+                                "source_line_end": 17,
+                                "source_column_start": 22,
+                                "source_column_end": 26,
+                                "kind": "IntegerLiteral",
+                                "type": {
+                                  "name": "",
+                                  "kind": "PackedArrayType",
+                                  "addr": 6349045398624,
+                                  "elementType": {
+                                    "name": "bit",
+                                    "kind": "ScalarType",
+                                    "addr": 4307779224,
+                                    "isSigned": false
+                                  },
+                                  "range": "[3:0]"
+                                },
+                                "value": "4'b1",
+                                "constant": "4'b1"
+                              },
+                              "constant": "4'b1"
+                            }
+                          },
+                          "isNonBlocking": false
+                        }
+                      }
+                    }
+                  }
+                ],
+                "definition": "6349037527808 mixed"
+              },
+              "connections": [
+                {
+                  "port": {
+                    "name": "clk",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 4,
+                    "source_column": 17,
+                    "addr": 6349045393624,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045393744 clk"
+                  },
+                  "expr": {
+                    "source_file_start": "clocks.sv",
+                    "source_file_end": "clocks.sv",
+                    "source_line_start": 26,
+                    "source_line_end": 26,
+                    "source_column_start": 20,
+                    "source_column_end": 23,
+                    "kind": "NamedValue",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "symbol": "6349045388824 clk"
+                  }
+                },
+                {
+                  "port": {
+                    "name": "rst_n",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 5,
+                    "source_column": 17,
+                    "addr": 6349045393904,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045394024 rst_n"
+                  },
+                  "expr": {
+                    "source_file_start": "clocks.sv",
+                    "source_file_end": "clocks.sv",
+                    "source_line_start": 26,
+                    "source_line_end": 26,
+                    "source_column_start": 26,
+                    "source_column_end": 31,
+                    "kind": "NamedValue",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "symbol": "6349045389104 rst_n"
+                  }
+                },
+                {
+                  "port": {
+                    "name": "en",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 6,
+                    "source_column": 17,
+                    "addr": 6349045394184,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045394304 en"
+                  },
+                  "expr": {
+                    "source_file_start": "clocks.sv",
+                    "source_file_end": "clocks.sv",
+                    "source_line_start": 26,
+                    "source_line_end": 26,
+                    "source_column_start": 34,
+                    "source_column_end": 36,
+                    "kind": "NamedValue",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "symbol": "6349045389384 en"
+                  }
+                },
+                {
+                  "port": {
+                    "name": "a",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 7,
+                    "source_column": 23,
+                    "addr": 6349045394464,
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 6349045392888,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      },
+                      "range": "[3:0]"
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045394584 a"
+                  },
+                  "expr": {
+                    "source_file_start": "clocks.sv",
+                    "source_file_end": "clocks.sv",
+                    "source_line_start": 26,
+                    "source_line_end": 26,
+                    "source_column_start": 39,
+                    "source_column_end": 40,
+                    "kind": "NamedValue",
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 6349045392888,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      },
+                      "range": "[3:0]"
+                    },
+                    "symbol": "6349045389664 a"
+                  }
+                },
+                {
+                  "port": {
+                    "name": "reg_q",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 8,
+                    "source_column": 24,
+                    "addr": 6349045394744,
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 6349045392888,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      },
+                      "range": "[3:0]"
+                    },
+                    "direction": "Out",
+                    "internalSymbol": "6349045394864 reg_q"
+                  },
+                  "expr": {
+                    "source_file_start": "clocks.sv",
+                    "source_file_end": "clocks.sv",
+                    "source_line_start": 26,
+                    "source_line_end": 26,
+                    "source_column_start": 43,
+                    "source_column_end": 48,
+                    "kind": "Assignment",
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 6349045392888,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      },
+                      "range": "[3:0]"
+                    },
+                    "left": {
+                      "source_file_start": "clocks.sv",
+                      "source_file_end": "clocks.sv",
+                      "source_line_start": 26,
+                      "source_line_end": 26,
+                      "source_column_start": 43,
+                      "source_column_end": 48,
+                      "kind": "NamedValue",
+                      "type": {
+                        "name": "",
+                        "kind": "PackedArrayType",
+                        "addr": 6349045392888,
+                        "elementType": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4307779304,
+                          "isSigned": false
+                        },
+                        "range": "[3:0]"
+                      },
+                      "symbol": "6349045389944 reg_q"
+                    },
+                    "right": {
+                      "source_file_start": "clocks.sv",
+                      "source_file_end": "clocks.sv",
+                      "source_line_start": 26,
+                      "source_line_end": 26,
+                      "source_column_start": 43,
+                      "source_column_end": 48,
+                      "kind": "EmptyArgument",
+                      "type": {
+                        "name": "",
+                        "kind": "PackedArrayType",
+                        "addr": 6349045392888,
+                        "elementType": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4307779304,
+                          "isSigned": false
+                        },
+                        "range": "[3:0]"
+                      }
+                    },
+                    "isNonBlocking": false
+                  }
+                },
+                {
+                  "port": {
+                    "name": "comb_o",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 9,
+                    "source_column": 24,
+                    "addr": 6349045395000,
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 6349045392888,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      },
+                      "range": "[3:0]"
+                    },
+                    "direction": "Out",
+                    "internalSymbol": "6349045395120 comb_o"
+                  },
+                  "expr": {
+                    "source_file_start": "clocks.sv",
+                    "source_file_end": "clocks.sv",
+                    "source_line_start": 26,
+                    "source_line_end": 26,
+                    "source_column_start": 51,
+                    "source_column_end": 57,
+                    "kind": "Assignment",
+                    "type": {
+                      "name": "",
+                      "kind": "PackedArrayType",
+                      "addr": 6349045392888,
+                      "elementType": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      },
+                      "range": "[3:0]"
+                    },
+                    "left": {
+                      "source_file_start": "clocks.sv",
+                      "source_file_end": "clocks.sv",
+                      "source_line_start": 26,
+                      "source_line_end": 26,
+                      "source_column_start": 51,
+                      "source_column_end": 57,
+                      "kind": "NamedValue",
+                      "type": {
+                        "name": "",
+                        "kind": "PackedArrayType",
+                        "addr": 6349045392888,
+                        "elementType": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4307779304,
+                          "isSigned": false
+                        },
+                        "range": "[3:0]"
+                      },
+                      "symbol": "6349045390200 comb_o"
+                    },
+                    "right": {
+                      "source_file_start": "clocks.sv",
+                      "source_file_end": "clocks.sv",
+                      "source_line_start": 26,
+                      "source_line_end": 26,
+                      "source_column_start": 51,
+                      "source_column_end": 57,
+                      "kind": "EmptyArgument",
+                      "type": {
+                        "name": "",
+                        "kind": "PackedArrayType",
+                        "addr": 6349045392888,
+                        "elementType": {
+                          "name": "logic",
+                          "kind": "ScalarType",
+                          "addr": 4307779304,
+                          "isSigned": false
+                        },
+                        "range": "[3:0]"
+                      }
+                    },
+                    "isNonBlocking": false
+                  }
+                }
+              ]
+            },
+            {
+              "name": "mid",
+              "kind": "Variable",
+              "source_file": "clocks.sv",
+              "source_line": 28,
+              "source_column": 11,
+              "addr": 6349045388304,
+              "type": {
+                "name": "logic",
+                "kind": "ScalarType",
+                "addr": 4307779304,
+                "isSigned": false
+              },
+              "lifetime": "Static"
+            },
+            {
+              "name": "u_first",
+              "kind": "Instance",
+              "source_file": "clocks.sv",
+              "source_line": 29,
+              "source_column": 11,
+              "addr": 6349045391584,
+              "body": {
+                "name": "stage",
+                "kind": "InstanceBody",
+                "source_file": "clocks.sv",
+                "source_line": 21,
+                "source_column": 8,
+                "addr": 6349045391712,
+                "members": [
+                  {
+                    "name": "clk",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 26,
+                    "addr": 6349045399136,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045399256 clk"
+                  },
+                  {
+                    "name": "clk",
+                    "kind": "Net",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 26,
+                    "addr": 6349045399256,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "netType": {
+                      "name": "wire",
+                      "kind": "NetType",
+                      "addr": 6349036261920,
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      }
+                    }
+                  },
+                  {
+                    "name": "d",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 43,
+                    "addr": 6349045399416,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045403664 d"
+                  },
+                  {
+                    "name": "d",
+                    "kind": "Net",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 43,
+                    "addr": 6349045403664,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "netType": {
+                      "name": "wire",
+                      "kind": "NetType",
+                      "addr": 6349036261920,
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      }
+                    }
+                  },
+                  {
+                    "name": "q",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 59,
+                    "addr": 6349045403824,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "Out",
+                    "internalSymbol": "6349045403944 q"
+                  },
+                  {
+                    "name": "q",
+                    "kind": "Variable",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 59,
+                    "addr": 6349045403944,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "lifetime": "Static"
+                  },
+                  {
+                    "name": "",
+                    "kind": "ProceduralBlock",
+                    "source_file": "clocks.sv",
+                    "source_line": 22,
+                    "source_column": 5,
+                    "addr": 6349045391952,
+                    "procedureKind": "AlwaysFF",
+                    "body": {
+                      "source_file_start": "clocks.sv",
+                      "source_file_end": "clocks.sv",
+                      "source_line_start": 22,
+                      "source_line_end": 22,
+                      "source_column_start": 15,
+                      "source_column_end": 37,
+                      "kind": "Timed",
+                      "timing": {
+                        "source_file_start": "clocks.sv",
+                        "source_file_end": "clocks.sv",
+                        "source_line_start": 22,
+                        "source_line_end": 22,
+                        "source_column_start": 17,
+                        "source_column_end": 28,
+                        "kind": "SignalEvent",
+                        "expr": {
+                          "source_file_start": "clocks.sv",
+                          "source_file_end": "clocks.sv",
+                          "source_line_start": 22,
+                          "source_line_end": 22,
+                          "source_column_start": 25,
+                          "source_column_end": 28,
+                          "kind": "NamedValue",
+                          "type": {
+                            "name": "logic",
+                            "kind": "ScalarType",
+                            "addr": 4307779304,
+                            "isSigned": false
+                          },
+                          "symbol": "6349045399256 clk"
+                        },
+                        "edge": "PosEdge"
+                      },
+                      "stmt": {
+                        "source_file_start": "clocks.sv",
+                        "source_file_end": "clocks.sv",
+                        "source_line_start": 22,
+                        "source_line_end": 22,
+                        "source_column_start": 30,
+                        "source_column_end": 37,
+                        "kind": "ExpressionStatement",
+                        "expr": {
+                          "source_file_start": "clocks.sv",
+                          "source_file_end": "clocks.sv",
+                          "source_line_start": 22,
+                          "source_line_end": 22,
+                          "source_column_start": 30,
+                          "source_column_end": 36,
+                          "kind": "Assignment",
+                          "type": {
+                            "name": "logic",
+                            "kind": "ScalarType",
+                            "addr": 4307779304,
+                            "isSigned": false
+                          },
+                          "left": {
+                            "source_file_start": "clocks.sv",
+                            "source_file_end": "clocks.sv",
+                            "source_line_start": 22,
+                            "source_line_end": 22,
+                            "source_column_start": 30,
+                            "source_column_end": 31,
+                            "kind": "NamedValue",
+                            "type": {
+                              "name": "logic",
+                              "kind": "ScalarType",
+                              "addr": 4307779304,
+                              "isSigned": false
+                            },
+                            "symbol": "6349045403944 q"
+                          },
+                          "right": {
+                            "source_file_start": "clocks.sv",
+                            "source_file_end": "clocks.sv",
+                            "source_line_start": 22,
+                            "source_line_end": 22,
+                            "source_column_start": 35,
+                            "source_column_end": 36,
+                            "kind": "NamedValue",
+                            "type": {
+                              "name": "logic",
+                              "kind": "ScalarType",
+                              "addr": 4307779304,
+                              "isSigned": false
+                            },
+                            "symbol": "6349045403664 d"
+                          },
+                          "isNonBlocking": true
+                        }
+                      }
+                    }
+                  }
+                ],
+                "definition": "6349037528576 stage"
+              },
+              "connections": [
+                {
+                  "port": {
+                    "name": "clk",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 26,
+                    "addr": 6349045399136,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045399256 clk"
+                  },
+                  "expr": {
+                    "source_file_start": "clocks.sv",
+                    "source_file_end": "clocks.sv",
+                    "source_line_start": 29,
+                    "source_line_end": 29,
+                    "source_column_start": 20,
+                    "source_column_end": 23,
+                    "kind": "NamedValue",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "symbol": "6349045388824 clk"
+                  }
+                },
+                {
+                  "port": {
+                    "name": "d",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 43,
+                    "addr": 6349045399416,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045403664 d"
+                  },
+                  "expr": {
+                    "source_file_start": "clocks.sv",
+                    "source_file_end": "clocks.sv",
+                    "source_line_start": 29,
+                    "source_line_end": 29,
+                    "source_column_start": 28,
+                    "source_column_end": 31,
+                    "kind": "NamedValue",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "symbol": "6349045390456 din"
+                  }
+                },
+                {
+                  "port": {
+                    "name": "q",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 59,
+                    "addr": 6349045403824,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "Out",
+                    "internalSymbol": "6349045403944 q"
+                  },
+                  "expr": {
+                    "source_file_start": "clocks.sv",
+                    "source_file_end": "clocks.sv",
+                    "source_line_start": 29,
+                    "source_line_end": 29,
+                    "source_column_start": 37,
+                    "source_column_end": 40,
+                    "kind": "Assignment",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "left": {
+                      "source_file_start": "clocks.sv",
+                      "source_file_end": "clocks.sv",
+                      "source_line_start": 29,
+                      "source_line_end": 29,
+                      "source_column_start": 37,
+                      "source_column_end": 40,
+                      "kind": "NamedValue",
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      },
+                      "symbol": "6349045388304 mid"
+                    },
+                    "right": {
+                      "source_file_start": "clocks.sv",
+                      "source_file_end": "clocks.sv",
+                      "source_line_start": 29,
+                      "source_line_end": 29,
+                      "source_column_start": 37,
+                      "source_column_end": 40,
+                      "kind": "EmptyArgument",
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      }
+                    },
+                    "isNonBlocking": false
+                  }
+                }
+              ]
+            },
+            {
+              "name": "u_second",
+              "kind": "Instance",
+              "source_file": "clocks.sv",
+              "source_line": 30,
+              "source_column": 11,
+              "addr": 6349045392056,
+              "body": {
+                "name": "stage",
+                "kind": "InstanceBody",
+                "source_file": "clocks.sv",
+                "source_line": 21,
+                "source_column": 8,
+                "addr": 6349045392184,
+                "members": [
+                  {
+                    "name": "clk",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 26,
+                    "addr": 6349045405216,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045405336 clk"
+                  },
+                  {
+                    "name": "clk",
+                    "kind": "Net",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 26,
+                    "addr": 6349045405336,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "netType": {
+                      "name": "wire",
+                      "kind": "NetType",
+                      "addr": 6349036261920,
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      }
+                    }
+                  },
+                  {
+                    "name": "d",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 43,
+                    "addr": 6349045405496,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045405616 d"
+                  },
+                  {
+                    "name": "d",
+                    "kind": "Net",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 43,
+                    "addr": 6349045405616,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "netType": {
+                      "name": "wire",
+                      "kind": "NetType",
+                      "addr": 6349036261920,
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      }
+                    }
+                  },
+                  {
+                    "name": "q",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 59,
+                    "addr": 6349045405776,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "Out",
+                    "internalSymbol": "6349045405896 q"
+                  },
+                  {
+                    "name": "q",
+                    "kind": "Variable",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 59,
+                    "addr": 6349045405896,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "lifetime": "Static"
+                  },
+                  {
+                    "name": "",
+                    "kind": "ProceduralBlock",
+                    "source_file": "clocks.sv",
+                    "source_line": 22,
+                    "source_column": 5,
+                    "addr": 6349045392424,
+                    "procedureKind": "AlwaysFF",
+                    "body": {
+                      "source_file_start": "clocks.sv",
+                      "source_file_end": "clocks.sv",
+                      "source_line_start": 22,
+                      "source_line_end": 22,
+                      "source_column_start": 15,
+                      "source_column_end": 37,
+                      "kind": "Timed",
+                      "timing": {
+                        "source_file_start": "clocks.sv",
+                        "source_file_end": "clocks.sv",
+                        "source_line_start": 22,
+                        "source_line_end": 22,
+                        "source_column_start": 17,
+                        "source_column_end": 28,
+                        "kind": "SignalEvent",
+                        "expr": {
+                          "source_file_start": "clocks.sv",
+                          "source_file_end": "clocks.sv",
+                          "source_line_start": 22,
+                          "source_line_end": 22,
+                          "source_column_start": 25,
+                          "source_column_end": 28,
+                          "kind": "NamedValue",
+                          "type": {
+                            "name": "logic",
+                            "kind": "ScalarType",
+                            "addr": 4307779304,
+                            "isSigned": false
+                          },
+                          "symbol": "6349045405336 clk"
+                        },
+                        "edge": "PosEdge"
+                      },
+                      "stmt": {
+                        "source_file_start": "clocks.sv",
+                        "source_file_end": "clocks.sv",
+                        "source_line_start": 22,
+                        "source_line_end": 22,
+                        "source_column_start": 30,
+                        "source_column_end": 37,
+                        "kind": "ExpressionStatement",
+                        "expr": {
+                          "source_file_start": "clocks.sv",
+                          "source_file_end": "clocks.sv",
+                          "source_line_start": 22,
+                          "source_line_end": 22,
+                          "source_column_start": 30,
+                          "source_column_end": 36,
+                          "kind": "Assignment",
+                          "type": {
+                            "name": "logic",
+                            "kind": "ScalarType",
+                            "addr": 4307779304,
+                            "isSigned": false
+                          },
+                          "left": {
+                            "source_file_start": "clocks.sv",
+                            "source_file_end": "clocks.sv",
+                            "source_line_start": 22,
+                            "source_line_end": 22,
+                            "source_column_start": 30,
+                            "source_column_end": 31,
+                            "kind": "NamedValue",
+                            "type": {
+                              "name": "logic",
+                              "kind": "ScalarType",
+                              "addr": 4307779304,
+                              "isSigned": false
+                            },
+                            "symbol": "6349045405896 q"
+                          },
+                          "right": {
+                            "source_file_start": "clocks.sv",
+                            "source_file_end": "clocks.sv",
+                            "source_line_start": 22,
+                            "source_line_end": 22,
+                            "source_column_start": 35,
+                            "source_column_end": 36,
+                            "kind": "NamedValue",
+                            "type": {
+                              "name": "logic",
+                              "kind": "ScalarType",
+                              "addr": 4307779304,
+                              "isSigned": false
+                            },
+                            "symbol": "6349045405616 d"
+                          },
+                          "isNonBlocking": true
+                        }
+                      }
+                    }
+                  }
+                ],
+                "definition": "6349037528576 stage"
+              },
+              "connections": [
+                {
+                  "port": {
+                    "name": "clk",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 26,
+                    "addr": 6349045405216,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045405336 clk"
+                  },
+                  "expr": {
+                    "source_file_start": "clocks.sv",
+                    "source_file_end": "clocks.sv",
+                    "source_line_start": 30,
+                    "source_line_end": 30,
+                    "source_column_start": 21,
+                    "source_column_end": 24,
+                    "kind": "NamedValue",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "symbol": "6349045388824 clk"
+                  }
+                },
+                {
+                  "port": {
+                    "name": "d",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 43,
+                    "addr": 6349045405496,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "In",
+                    "internalSymbol": "6349045405616 d"
+                  },
+                  "expr": {
+                    "source_file_start": "clocks.sv",
+                    "source_file_end": "clocks.sv",
+                    "source_line_start": 30,
+                    "source_line_end": 30,
+                    "source_column_start": 29,
+                    "source_column_end": 32,
+                    "kind": "NamedValue",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "symbol": "6349045388304 mid"
+                  }
+                },
+                {
+                  "port": {
+                    "name": "q",
+                    "kind": "Port",
+                    "source_file": "clocks.sv",
+                    "source_line": 21,
+                    "source_column": 59,
+                    "addr": 6349045405776,
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "direction": "Out",
+                    "internalSymbol": "6349045405896 q"
+                  },
+                  "expr": {
+                    "source_file_start": "clocks.sv",
+                    "source_file_end": "clocks.sv",
+                    "source_line_start": 30,
+                    "source_line_end": 30,
+                    "source_column_start": 38,
+                    "source_column_end": 42,
+                    "kind": "Assignment",
+                    "type": {
+                      "name": "logic",
+                      "kind": "ScalarType",
+                      "addr": 4307779304,
+                      "isSigned": false
+                    },
+                    "left": {
+                      "source_file_start": "clocks.sv",
+                      "source_file_end": "clocks.sv",
+                      "source_line_start": 30,
+                      "source_line_end": 30,
+                      "source_column_start": 38,
+                      "source_column_end": 42,
+                      "kind": "NamedValue",
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      },
+                      "symbol": "6349045390736 dout"
+                    },
+                    "right": {
+                      "source_file_start": "clocks.sv",
+                      "source_file_end": "clocks.sv",
+                      "source_line_start": 30,
+                      "source_line_end": 30,
+                      "source_column_start": 38,
+                      "source_column_end": 42,
+                      "kind": "EmptyArgument",
+                      "type": {
+                        "name": "logic",
+                        "kind": "ScalarType",
+                        "addr": 4307779304,
+                        "isSigned": false
+                      }
+                    },
+                    "isNonBlocking": false
+                  }
+                }
+              ]
+            }
+          ],
+          "definition": "6349037529344 clk_top"
+        },
+        "connections": [
+        ]
+      }
+    ]
+  },
+  "definitions": [
+    {
+      "name": "clk_top",
+      "kind": "Definition",
+      "source_file": "clocks.sv",
+      "source_line": 25,
+      "source_column": 8,
+      "addr": 6349037529344,
+      "defaultNetType": "6349036261920 wire",
+      "definitionKind": "Module",
+      "defaultLifetime": "Static",
+      "unconnectedDrive": "None",
+      "cellDefine": false
+    },
+    {
+      "name": "mixed",
+      "kind": "Definition",
+      "source_file": "clocks.sv",
+      "source_line": 3,
+      "source_column": 8,
+      "addr": 6349037527808,
+      "defaultNetType": "6349036261920 wire",
+      "definitionKind": "Module",
+      "defaultLifetime": "Static",
+      "unconnectedDrive": "None",
+      "cellDefine": false
+    },
+    {
+      "name": "stage",
+      "kind": "Definition",
+      "source_file": "clocks.sv",
+      "source_line": 21,
+      "source_column": 8,
+      "addr": 6349037528576,
+      "defaultNetType": "6349036261920 wire",
+      "definitionKind": "Module",
+      "defaultLifetime": "Static",
+      "unconnectedDrive": "None",
+      "cellDefine": false
+    }
+  ]
+}

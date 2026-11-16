@@ -1,0 +1,4 @@
+# egui_kittest leaves these beside a snapshot that changed.
+*.old.png
+*.new.png
+*.diff.png

@@ -1,0 +1,60 @@
+diff --git a/source/text/Json.cpp b/source/text/Json.cpp
+index 64c5f1dad..80dfcc021 100644
+--- a/source/text/Json.cpp
++++ b/source/text/Json.cpp
+@@ -180,10 +180,9 @@ void JsonWriter::endValue() {
+ 
+ size_t JsonWriter::findLastComma() const {
+     size_t size = buffer->size();
+-    if (pretty) {
+-        while (size && (buffer->data()[size - 1] == ' ' || buffer->data()[size - 1] == '\n'))
+-            size--;
+-    }
++    // (Compact output has whitespace here too: the final newline after the last value.)
++    while (size && (buffer->data()[size - 1] == ' ' || buffer->data()[size - 1] == '\n'))
++        size--;
+ 
+     if (size && buffer->data()[size - 1] == ',')
+         size--;
+diff --git a/tools/driver/slang_main.cpp b/tools/driver/slang_main.cpp
+index 260c8abfb..0b0f462bd 100644
+--- a/tools/driver/slang_main.cpp
++++ b/tools/driver/slang_main.cpp
+@@ -29,7 +29,7 @@ using namespace slang::driver;
+ 
+ void printASTJson(Compilation& compilation, const std::string& fileName,
+                   const std::vector<std::string>& scopes, bool includeSourceInfo,
+-                  bool detailedTypes) {
++                  bool detailedTypes, bool compact) {
+     // Stream output directly to the destination. A single JsonWriter (and
+     // ASTSerializer) is kept alive for the entire run so that shared state
+     // such as the set of already-printed enum types remains consistent across
+@@ -49,7 +49,7 @@ void printASTJson(Compilation& compilation, const std::string& fileName,
+     }
+ 
+     JsonWriter writer;
+-    writer.setPrettyPrint(true);
++    writer.setPrettyPrint(!compact);
+ 
+     ASTSerializer serializer(compilation, writer);
+     serializer.setIncludeSourceInfo(includeSourceInfo);
+@@ -236,6 +236,10 @@ int driverMain(int argc, TArgs argv) {
+         driver.cmdLine.add("--ast-json-detailed-types", serializeDetailedTypes,
+                            "When dumping AST to JSON, expand out all type information");
+ 
++        std::optional<bool> astJsonCompact;
++        driver.cmdLine.add("--ast-json-compact", astJsonCompact,
++                           "When dumping AST to JSON, leave out indentation and line breaks");
++
+         std::optional<std::string> timeTrace;
+         driver.cmdLine.setGroup("Profiling");
+         driver.cmdLine.add("--time-trace", timeTrace,
+@@ -356,7 +360,7 @@ int driverMain(int argc, TArgs argv) {
+             if (astJsonFile) {
+                 TimeTraceScope timeScope("astSerialization"sv, ""sv);
+                 printASTJson(*compilation, *astJsonFile, astJsonScopes, includeSourceInfo == true,
+-                             serializeDetailedTypes == true);
++                             serializeDetailedTypes == true, astJsonCompact == true);
+             }
+             return ok;
+         };

@@ -1,0 +1,23 @@
+[package]
+name = "nvim-bridge"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+grid.workspace = true
+anyhow.workspace = true
+log.workspace = true
+tokio.workspace = true
+nvim-rs.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+arboard.workspace = true
+tokio-tungstenite = "0.30.0"
+getrandom = "0.3"
+serde_json.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+# Whether the process behind an old IDE lock file still exists (`kill(pid, 0)`).
+libc = "0.2"
+
