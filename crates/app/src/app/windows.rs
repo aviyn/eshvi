@@ -81,15 +81,16 @@ impl VimApp {
     }
 
     /// Scrollbars on the editor windows (not floats or file trees), over
-    /// their text area.
+    /// their text area; while the diff view covers them, on it instead.
     pub(super) fn paint_scrollbars(&mut self, ctx: &egui::Context, painter: &egui::Painter) {
         let m = self.renderer.metrics();
         let (fg, bg) = (rgb(self.editor.default_colors.fg), rgb(self.editor.default_colors.bg));
+        let under_diff = self.diff.is_some();
         let mut targets: Vec<crate::scrollbar::Target> = self
             .editor
             .windows
             .values()
-            .filter(|w| w.kind == WindowKind::Normal && !w.hidden && !self.sidebar_wins.contains(&w.win))
+            .filter(|w| !under_diff && w.kind == WindowKind::Normal && !w.hidden && !self.sidebar_wins.contains(&w.win))
             .filter_map(|w| {
                 // A Markdown preview's bar is over what it shows, not the
                 // text behind it.
@@ -137,6 +138,10 @@ impl VimApp {
                     })
                 }),
         );
+        if let Some(d) = &self.diff {
+            let chrome = crate::style::Chrome::from_editor(&self.editor);
+            targets.extend(d.scrollbar_target(chrome.fg, chrome.bg));
+        }
         self.scrollbars.paint(ctx, painter, targets);
     }
 }

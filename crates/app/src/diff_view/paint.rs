@@ -134,6 +134,7 @@ impl DiffView {
         let find_bar = Rect::from_min_size(bar.left_bottom(), Vec2::new(rect.width(), find_h));
         let body = Rect::from_min_max(find_bar.left_bottom(), rect.max);
         self.viewport_h = body.height();
+        self.body = body;
         self.focused = focused;
         self.ptr = ui.input(|i| i.pointer.hover_pos());
         self.prepare();
@@ -303,7 +304,7 @@ impl DiffView {
         let (pressed, down, pos, shift) =
             ui.input(|i| (i.pointer.primary_pressed(), i.pointer.primary_down(), i.pointer.interact_pos(), i.modifiers.shift));
         let Some(pos) = pos else { return };
-        if pressed && resp.hovered() {
+        if pressed && resp.hovered() && !self.bar_drag {
             self.anchor = self.anchor.filter(|_| shift);
             match hits.at(pos) {
                 Some(Hit::Header(i)) => {

@@ -19,12 +19,28 @@ fn wheel_step(pending: f32) -> (i64, f32) {
 impl VimApp {
     /// Scroll window `win` so line `top` (0-based) is first in view.
     pub(super) fn scroll_window_to(&mut self, win: i64, top: i64) {
+        if win == crate::scrollbar::DIFF {
+            if let Some(d) = &mut self.diff {
+                d.scroll_to(top as f32);
+            }
+            return;
+        }
         if self.preview.win(win).is_some() {
             self.preview.scroll_to(win, top);
             return;
         }
         self.gui_scrolled = Some(Instant::now());
         self.bridge.send(UiCommand::Command(format!("lua Eshvi.scroll_to({win}, {})", top + 1)));
+    }
+
+    /// A primary press at `pos`: whether a scroll bar took it (it scrolls
+    /// its window, or the diff view, to where the thumb is grabbed).
+    pub(super) fn scrollbar_press(&mut self, pos: Pos2) -> bool {
+        let (taken, scroll) = self.scrollbars.press(pos);
+        if let Some((win, top)) = scroll {
+            self.scroll_window_to(win, top);
+        }
+        taken
     }
 
     /// The wheel's rows still to scroll a file window, sent a few at a time
@@ -242,11 +258,7 @@ impl VimApp {
             // Scrollbars take presses on them, and the drags that follow.
             match &ev {
                 Event::PointerButton { pos, pressed: true, button: PointerButton::Primary, .. } => {
-                    let (taken, scroll) = self.scrollbars.press(*pos);
-                    if let Some((win, top)) = scroll {
-                        self.scroll_window_to(win, top);
-                    }
-                    if taken {
+                    if self.scrollbar_press(*pos) {
                         continue;
                     }
                 }

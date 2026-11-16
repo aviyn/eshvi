@@ -19,6 +19,25 @@ pub struct Link {
     pub spans: Vec<(usize, usize, usize)>,
 }
 
+/// Where a path as written is: `~/x` in the home folder, an absolute one as
+/// it is, a relative one in `dir` (none where it is not known: nowhere).
+pub fn resolve(path: &str, dir: Option<&std::path::Path>, home: Option<&std::path::Path>) -> Option<std::path::PathBuf> {
+    if let Some(rest) = path.strip_prefix("~/") {
+        return home.map(|h| h.join(rest));
+    }
+    let path = std::path::Path::new(path);
+    if path.is_absolute() {
+        Some(path.to_path_buf())
+    } else {
+        dir.map(|d| d.join(path))
+    }
+}
+
+/// The home folder.
+pub fn home() -> Option<std::path::PathBuf> {
+    std::env::var_os("HOME").map(Into::into)
+}
+
 /// The link under a cell, if any. `exists` decides whether a file path is
 /// real (so words like `and.` aren't links).
 pub fn link_at(grid: &Grid, row: usize, col: usize, exists: &dyn Fn(&str) -> bool) -> Option<Link> {
@@ -140,6 +159,19 @@ mod tests {
         assert_eq!(at(0, 39), None, "'and' is no file");
         assert_eq!(at(1, 3), Some(Target::Url("https://github.com/x/y".into())));
         assert_eq!(at(1, 26), None, "the file doesn't exist");
+    }
+
+    #[test]
+    fn a_path_is_resolved_against_the_folder_or_home() {
+        use std::path::{Path, PathBuf};
+        let (dir, home) = (Some(Path::new("/work")), Some(Path::new("/Users/x")));
+        let at = |p: &str, dir, home| resolve(p, dir, home);
+        assert_eq!(at("/etc/hosts", dir, home), Some(PathBuf::from("/etc/hosts")));
+        assert_eq!(at("src/a.rs", dir, home), Some(PathBuf::from("/work/src/a.rs")));
+        assert_eq!(at("~/.config/eshvi/nvim/init.lua", dir, home), Some(PathBuf::from("/Users/x/.config/eshvi/nvim/init.lua")));
+        assert_eq!(at("src/a.rs", None, home), None, "a relative path with no folder is nowhere");
+        assert_eq!(at("~/a.lua", dir, None), None, "no home");
+        assert_eq!(at("/etc/hosts", None, None), Some(PathBuf::from("/etc/hosts")));
     }
 
     #[test]

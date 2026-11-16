@@ -644,12 +644,7 @@ impl VimApp {
             }
             if let Some(target) = o.link {
                 let dir = dir.or_else(|| self.agents.data.get(&id).map(|t| t.cwd.clone()));
-                // A file opens in the editor window, which then has the keyboard.
-                let file = matches!(target, crate::links::Target::File { .. });
                 self.open_term_link(&ctx, target, dir);
-                if file {
-                    self.set_focus(Focus::Editor);
-                }
             }
         });
         let rect = shown.response.rect;

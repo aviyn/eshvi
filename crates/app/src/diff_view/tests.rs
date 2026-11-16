@@ -593,7 +593,7 @@ fn the_neovim_spec_of_a_file_names_its_sides() {
 use crate::decorations::DecoColors;
 use crate::scm_view::tests::system_font;
 use crate::style::tests::themes;
-use egui::{Color32, FontId, Rect, Vec2};
+use egui::{Color32, FontId, Pos2, Rect, Vec2};
 use egui_kittest::Harness;
 
 /// Two files changed on disk: a Rust file with edits in two places (and the
@@ -658,6 +658,8 @@ struct Pic {
     view: DiffView,
     chrome: Chrome,
     colors: DiffColors,
+    /// The scroll bar over the view, as the app paints it (none unless a test sets a mode).
+    bars: crate::scrollbar::Scrollbars,
 }
 
 use crate::style::Chrome;
@@ -689,7 +691,7 @@ fn pic_harness_mode(name: &str, theme: &str, layout: Layout, size: Vec2, mode: M
     settle(&mut view);
     let deco = deco_for(theme, &chrome);
     let colors = DiffColors::new(&chrome, &deco, [None; 4]);
-    let state = Pic { view, chrome, colors };
+    let state = Pic { view, chrome, colors, bars: crate::scrollbar::Scrollbars::new(crate::scrollbar::Mode::Never) };
     let h = Harness::builder()
         .with_size(size)
         .with_pixels_per_point(2.0)
@@ -701,8 +703,12 @@ fn pic_harness_mode(name: &str, theme: &str, layout: Layout, size: Vec2, mode: M
                 ui.ctx().set_theme(if s.chrome.bg.r() < 128 { egui::Theme::Dark } else { egui::Theme::Light });
                 let code = |_: bool, _: bool| (FontId::monospace(13.0), false);
                 let look = Look { chrome: s.chrome, colors: s.colors, ui: FontId::proportional(13.0), code: &code, row_h: 19.0, char_w: 7.8 };
-                let rect = Rect::from_min_size(ui.max_rect().min, size);
+                // (The pictures of the bar are inside the window, which the others reach past by the margin.)
+                let inset = if s.bars.mode == crate::scrollbar::Mode::Never { Vec2::ZERO } else { Vec2::splat(16.0) };
+                let rect = Rect::from_min_size(ui.max_rect().min, size - inset);
                 s.view.show(ui, rect, &look, true);
+                let target = s.view.scrollbar_target(s.chrome.fg, s.chrome.bg);
+                s.bars.paint(ui.ctx(), ui.painter(), target.into_iter().collect());
             },
             state,
         );
@@ -791,7 +797,7 @@ fn the_kinds_of_file_are_drawn() {
         view.viewport_h = 700.0;
         settle(&mut view);
         let deco = deco_for(theme, &chrome);
-        let state = Pic { view, chrome, colors: DiffColors::new(&chrome, &deco, [None; 4]) };
+        let state = Pic { view, chrome, colors: DiffColors::new(&chrome, &deco, [None; 4]), bars: crate::scrollbar::Scrollbars::new(crate::scrollbar::Mode::Never) };
         let mut h = Harness::builder()
             .with_size(Vec2::new(640.0, 560.0))
             .with_pixels_per_point(2.0)
@@ -1374,4 +1380,126 @@ fn the_find_field_and_its_matches_are_drawn() {
         results.extend_harness(&mut h);
     }
     results.unwrap();
+}
+
+/// A repo with `a.rs` of `lines` lines, one changed on disk, as a view's only file.
+fn long_file_view(name: &str, lines: usize) -> (DiffView, Repo) {
+    let r = Repo::new(name);
+    let text = |n: &str| (1..=lines).map(|l| if l == 5 { format!("let {n} = 0;\n") } else { format!("let x{l} = 1;\n") }).collect::<String>();
+    r.write("a.rs", &text("a"));
+    r.commit("first");
+    r.write("a.rs", &text("b"));
+    let file = FileSpec { path: "a.rs".into(), ..spec(0) };
+    let req = Request { files: Files::List(vec![file]), ..request(&r, 1, None) };
+    let mut v = DiffView::new(req, Options::default(), || {});
+    let theme = syntect::highlighting::ThemeSet::load_defaults().themes["base16-ocean.dark"].clone();
+    v.set_coloring(Some(Coloring { theme: std::sync::Arc::new(theme), fg: Color32::WHITE }));
+    (v, r)
+}
+
+#[test]
+fn the_colors_of_a_long_file_come_after_its_rows_and_are_applied() {
+    let (mut v, _r) = long_file_view("late-colors", source::COLORS_LATER_LINES + 100);
+    settle(&mut v);
+    assert!(v.sections[0].rows.is_some(), "the rows are there");
+    let start = Instant::now();
+    while v.sections[0].loaded.as_ref().is_some_and(|l| l.colors.is_none()) {
+        v.poll();
+        assert!(start.elapsed() < Duration::from_secs(20), "the colors didn't come");
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let colors = v.sections[0].loaded.as_ref().unwrap().colors.as_ref().expect("rust is known");
+    assert_eq!(colors.new.len(), source::COLORS_LATER_LINES + 100);
+}
+
+#[test]
+fn colors_made_for_an_older_read_of_a_file_are_ignored() {
+    let (mut v, _r) = long_file_view("stale-colors", 20);
+    v.set_coloring(None);
+    settle(&mut v);
+    let serial = v.sections[0].serial;
+    let colors = |n| Some(source::Colors { old: vec![vec![]; n], new: vec![vec![]; n] });
+    let have = |v: &DiffView| v.sections[0].loaded.as_ref().unwrap().colors.as_ref().map(|c| c.new.len());
+    assert_eq!(have(&v), None);
+    // The file was read again since: its older colors are not for this diff.
+    v.take(Done::Colors { index: 0, serial: serial - 1, colors: colors(1) });
+    assert_eq!(have(&v), None);
+    v.take(Done::Colors { index: 0, serial: serial + 1, colors: colors(2) });
+    assert_eq!(have(&v), None);
+    v.take(Done::Colors { index: 0, serial, colors: colors(3) });
+    assert_eq!(have(&v), Some(3));
+    // Nor is an older diff taken for the file's.
+    let old = Loaded { body: model::Body::Binary, colors: None, status: Status::Modified };
+    v.take(Done::Loaded { index: 0, serial: serial - 1, loaded: old });
+    assert!(matches!(v.sections[0].loaded.as_ref().unwrap().body, model::Body::Text(_)));
+}
+
+#[test]
+fn a_short_file_is_colored_when_its_rows_come() {
+    let (mut v, _r) = long_file_view("short-colors", 40);
+    settle(&mut v);
+    assert!(v.sections[0].loaded.as_ref().unwrap().colors.is_some(), "no flash of uncolored text");
+}
+
+#[test]
+fn the_scroll_bar_shows_where_the_view_is_in_all_its_files() {
+    let mut results = egui_kittest::SnapshotResults::new();
+    for theme in ["dark", "light"] {
+        let (mut h, _repo) = pic_harness(&format!("bar-{theme}"), theme, Layout::Unified, Vec2::new(700.0, 300.0), |v| v.scroll = 120.0);
+        h.state_mut().bars.mode = crate::scrollbar::Mode::Always;
+        h.run();
+        h.snapshot(format!("diff_view_scrollbar_{theme}"));
+        results.extend_harness(&mut h);
+    }
+    results.unwrap();
+}
+
+#[test]
+fn there_is_no_scroll_bar_when_everything_is_in_view() {
+    let (mut h, _repo) = pic_harness("bar-none", "dark", Layout::Unified, Vec2::new(700.0, 900.0), |_| {});
+    assert!(h.state().view.content_height() < 900.0 - h.state().view.geom.header_h * 2.0);
+    h.state_mut().bars.mode = crate::scrollbar::Mode::Always;
+    h.run();
+    let s = h.state_mut();
+    let at = s.view.body.right_top() + Vec2::new(-5.0, 5.0);
+    assert!(!s.bars.press(at).0);
+}
+
+#[test]
+fn dragging_the_scroll_bar_scrolls_the_view_and_a_click_on_its_track_jumps() {
+    let (mut h, _repo) = pic_harness("bar-drag", "dark", Layout::Unified, Vec2::new(700.0, 300.0), |_| {});
+    h.state_mut().bars.mode = crate::scrollbar::Mode::Always;
+    h.run();
+    let s = h.state_mut();
+    assert_eq!(s.view.scroll, 0.0);
+    let (win, area) = {
+        let t = s.view.scrollbar_target(s.chrome.fg, s.chrome.bg).expect("more than fits");
+        (t.win, t.area)
+    };
+    assert_eq!(win, crate::scrollbar::DIFF);
+    // The thumb is at the top: grab it, and pull it half way down the track.
+    let x = area.max.x - 5.0;
+    let (taken, first) = s.bars.press(Pos2::new(x, area.min.y + 4.0));
+    assert!(taken);
+    if let Some((_, y)) = first {
+        s.view.scroll_to(y as f32);
+    }
+    assert_eq!(s.view.scroll, 0.0, "grabbed where it is");
+    let (win, y) = s.bars.drag_to(Pos2::new(x, area.min.y + area.height() / 2.0)).expect("moved");
+    assert_eq!(win, crate::scrollbar::DIFF);
+    s.view.scroll_to(y as f32);
+    let max = s.view.max_scroll();
+    assert!(max > 0.0 && s.view.scroll > 0.0 && s.view.scroll < max, "{} of {max}", s.view.scroll);
+    // Dragged past the bottom: the end of the view.
+    let (_, y) = s.bars.drag_to(Pos2::new(x, area.max.y + 200.0)).unwrap();
+    s.view.scroll_to(y as f32);
+    assert_eq!(s.view.scroll, max);
+    s.bars.release();
+    // A click on the track under the thumb takes it there; above it, back.
+    h.run();
+    let s = h.state_mut();
+    let (_, top) = s.bars.press(Pos2::new(x, area.min.y + 2.0));
+    s.view.scroll_to(top.expect("jumped").1 as f32);
+    assert!(s.view.scroll < max / 4.0, "{}", s.view.scroll);
+    s.bars.release();
 }

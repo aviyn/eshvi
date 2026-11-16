@@ -851,11 +851,8 @@ impl TerminalView {
             return Some(link);
         }
         let grid = text_grid(snap);
-        let cwd = self.term.current_dir();
-        let exists = |p: &str| {
-            let path = std::path::Path::new(p);
-            if path.is_absolute() { path.is_file() } else { cwd.as_ref().is_some_and(|d| d.join(p).is_file()) }
-        };
+        let (cwd, home) = (self.term.current_dir(), links::home());
+        let exists = |p: &str| links::resolve(p, cwd.as_deref(), home.as_deref()).is_some_and(|p| p.is_file());
         links::link_at(&grid, row, col, &exists)
     }
 
@@ -1154,6 +1151,108 @@ mod tests {
         assert_eq!((osc8.target, osc8.spans), (Target::Url("https://osc8.example/a".into()), vec![(1, 0, 3)]));
         assert_eq!(at(1, 6), None, "text after the hyperlink is plain");
         let _ = std::fs::remove_file(dir.join("eshvi-term-link.txt"));
+    }
+
+    /// A terminal whose screen shows `lines` (each printed on a row of its own),
+    /// started in `cwd`, as a view with cells of 8 by 16.
+    fn view_showing(lines: &[String], cols: u16, cwd: &std::path::Path) -> TerminalView {
+        let script = format!("printf '%s\\r\\n' {}; sleep 3", lines.iter().map(|l| format!("'{l}'")).collect::<Vec<_>>().join(" "));
+        let mut opts = SpawnOptions::new(vec!["/bin/sh".into(), "-c".into(), script], term::Size { cols, rows: 12, cell_w: 8, cell_h: 16 });
+        opts.cwd = Some(cwd.to_path_buf());
+        let t = Terminal::spawn(opts).unwrap();
+        let last = lines.len().div_ceil(cols as usize).max(lines.len());
+        let start = Instant::now();
+        while t.snapshot().row(last - 1).iter().all(|c| c.c == ' ') && start.elapsed() < Duration::from_secs(10) {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        std::thread::sleep(Duration::from_millis(200));
+        let mut view = TerminalView::new(t);
+        view.metrics = CellMetrics { width: 8.0, height: 16.0 };
+        view
+    }
+
+    /// The tree of Eshvi's own config as a Mac has it: the repo's `config/nvim`,
+    /// and a hidden `.config/eshnv/nvim` that is a symlink to it. The folder
+    /// the symlink is in, and the repo file's path through it.
+    fn symlinked_config(name: &str) -> (std::path::PathBuf, String) {
+        let base = std::env::temp_dir().canonicalize().unwrap().join(format!("eshvi-links-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        std::fs::create_dir_all(base.join("repo/config/nvim/lua")).unwrap();
+        std::fs::write(base.join("repo/config/nvim/lua/options.lua"), "x").unwrap();
+        std::fs::create_dir_all(base.join("home/.config/eshnv")).unwrap();
+        std::os::unix::fs::symlink(base.join("repo/config/nvim"), base.join("home/.config/eshnv/nvim")).unwrap();
+        let through = format!("{}/home/.config/eshnv/nvim/lua/options.lua", base.display());
+        (base, through)
+    }
+
+    #[test]
+    fn a_full_path_through_a_symlink_in_a_hidden_folder_is_a_link_wherever_it_is_on_the_line() {
+        let (base, path) = symlinked_config("abs");
+        let elsewhere = base.join("repo");
+        let lines = [
+            path.clone(),
+            format!("user@mac % vim {path}"),
+            format!("{path}:12:3"),
+            format!("{}/home/.config/eshnv/nvim/lua/missing.lua", base.display()),
+        ];
+        let view = view_showing(&lines, 200, &elsewhere);
+        let snap = view.term.snapshot();
+        let at = |row: usize, col: usize| view.link_at(&snap, view.origin + Vec2::new(col as f32 * 8.0 + 1.0, row as f32 * 16.0 + 1.0));
+        let file = |path: &str, line, col| Target::File { path: path.into(), line, col };
+        assert_eq!(at(0, 3).map(|l| l.target), Some(file(&path, None, None)));
+        assert_eq!(at(1, 24).map(|l| l.target), Some(file(&path, None, None)), "after a prompt and a command");
+        assert_eq!(at(2, 3).map(|l| l.target), Some(file(&path, Some(12), Some(3))));
+        assert_eq!(at(3, 3), None, "a file that isn't there is no link");
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn a_path_wrapped_across_two_rows_is_one_link() {
+        let (base, path) = symlinked_config("wrap");
+        let view = view_showing(std::slice::from_ref(&path), 60, &base);
+        let snap = view.term.snapshot();
+        let at = |row: usize, col: usize| view.link_at(&snap, view.origin + Vec2::new(col as f32 * 8.0 + 1.0, row as f32 * 16.0 + 1.0));
+        let want = Target::File { path: path.clone(), line: None, col: None };
+        assert!(path.len() > 60, "wraps");
+        assert_eq!(at(0, 5).map(|l| l.target), Some(want.clone()));
+        let second = at(1, 2).expect("the second row");
+        assert_eq!(second.target, want);
+        assert_eq!(second.spans.len(), 2);
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn a_command_click_on_a_full_path_asks_for_the_file_and_a_plain_click_does_not() {
+        let ctx = Context::default();
+        let spec = crate::fonts::FontSpec::default_with_size(14.0);
+        let fonts = crate::fonts::install(&ctx, &spec, None, None, None, None);
+        let (base, path) = symlinked_config("click");
+        let mut view = view_showing(std::slice::from_ref(&path), 120, &base);
+        let run = |view: &mut TerminalView, events: Vec<Event>| {
+            let input = egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1400.0, 300.0))), events, ..Default::default() };
+            let mut out = None;
+            let mut frame = ctx.run_ui(input, |ui| {
+                let look = Look { fonts: &fonts, linespace: 0.0, fg: Color32::WHITE, bg: Color32::BLACK, accent: Color32::BLUE, ansi: [None; 16], option_as_meta: true, blink: false, copy_on_select: true, middle_click_paste: true };
+                out = Some(view.show(ui, &look, true));
+            });
+            frame.textures_delta.clear();
+            out.unwrap()
+        };
+        // The view lays its own cells out (and the screen is wide enough for the path): a point inside its text.
+        run(&mut view, vec![]);
+        std::thread::sleep(Duration::from_millis(300));
+        run(&mut view, vec![]);
+        let cell = view.cell_size();
+        let pos = view.origin + Vec2::new(cell.x * 10.5, cell.y * 0.5);
+        let click = |view: &mut TerminalView, modifiers: egui::Modifiers| {
+            run(view, vec![Event::PointerMoved(pos), Event::PointerButton { pos, button: PointerButton::Primary, pressed: true, modifiers }])
+        };
+        let plain = click(&mut view, egui::Modifiers::NONE);
+        assert!(plain.pressed && plain.link.is_none());
+        let out = click(&mut view, egui::Modifiers::COMMAND);
+        assert!(out.pressed, "the panel still takes the keyboard");
+        assert_eq!(out.link, Some(Target::File { path, line: None, col: None }));
+        let _ = std::fs::remove_dir_all(&base);
     }
 
     /// Run the view through egui headlessly for a few frames; the text it paints.

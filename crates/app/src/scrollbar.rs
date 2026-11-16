@@ -1,4 +1,4 @@
-//! Scrollbars over editor windows (`scrollbar` in the config): a thin
+//! Scrollbars over editor windows and the diff view (`scrollbar` in the config): a thin
 //! thumb at a window's right edge showing which part of the buffer is in
 //! view (`win_viewport`). "auto" shows it while the window scrolls or the
 //! pointer is near it, then fades; "always" keeps it; "never" has none.
@@ -25,6 +25,11 @@ const FADE: Duration = Duration::from_millis(350);
 const WIDTH: f32 = 6.0;
 const WIDTH_HOVER: f32 = 9.0;
 const MIN_THUMB: f32 = 24.0;
+
+/// The `win` of the diff view's bar: it is not a Neovim window, and handles
+/// of those are positive, so this one can't be one's. Its lines are pixels
+/// (`DiffView::scrollbar_target`).
+pub const DIFF: i64 = i64::MIN;
 
 /// A window to put a bar on: its handle, text area, and viewport.
 pub struct Target {

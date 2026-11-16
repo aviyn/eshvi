@@ -1,12 +1,14 @@
 //! Where a diff's two sides come from, and the thread that reads them: `git
 //! show <ref>:<path>`, the index (`git show :<path>`), the file on disk, or
 //! nothing (a new file's left side). No round trip through Neovim. Reading,
-//! diffing and syntax coloring a file run on a worker thread, one file at a
-//! time, those the view wants now first.
+//! diffing and syntax coloring a file run on worker threads, those the view
+//! wants now first; a long file's colors follow its diff in a message of
+//! their own.
 
+use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::{mpsc, Arc};
+use std::sync::{mpsc, Arc, Condvar, Mutex};
 
 use egui::Color32;
 use syntect::highlighting::Theme;
@@ -191,8 +193,15 @@ pub fn language(path: &str) -> &str {
     name.rsplit_once('.').map_or(name, |(_, ext)| ext)
 }
 
-/// Read, diff and color one file.
-pub fn load(top: &Path, spec: &FileSpec, coloring: Option<&Coloring>, max_lines: usize) -> Loaded {
+/// A file with more lines than this (on its longer side) is sent as its diff
+/// first and its colors after: coloring takes far longer than diffing (half a
+/// second a side for 9,000 lines), and the rows can be shown, uncolored, in the
+/// meantime. A shorter one is sent whole, so that an ordinary file doesn't
+/// flash uncolored.
+pub const COLORS_LATER_LINES: usize = 1500;
+
+/// Read and diff one file, without colors.
+fn diff(top: &Path, spec: &FileSpec, max_lines: usize) -> Loaded {
     let (old, new) = read_sides(top, spec);
     let body = model::body(&old, &new, max_lines);
     let status = match (&old, &new) {
@@ -202,17 +211,29 @@ pub fn load(top: &Path, spec: &FileSpec, coloring: Option<&Coloring>, max_lines:
         (_, Content::Missing) => Status::Deleted,
         _ => Status::Modified,
     };
-    let colors = match (&body, coloring) {
-        (Body::Text(d), Some(c)) => {
-            let spans = |lines: &[String]| crate::markdown::spans(&lines.join("\n"), language(&spec.path), &c.theme, c.fg);
-            match (spans(&d.old), spans(&d.new)) {
-                (Some(old), Some(new)) => Some(Colors { old, new }),
-                _ => None,
-            }
-        }
-        _ => None,
-    };
-    Loaded { body, colors, status }
+    Loaded { body, colors: None, status }
+}
+
+/// The syntax colors of a text diff's two sides, made in parallel (none for
+/// another kind of body, or a language that is not known).
+pub fn colors(path: &str, body: &Body, coloring: &Coloring) -> Option<Colors> {
+    let Body::Text(d) = body else { return None };
+    let spans = |lines: &[String]| crate::markdown::spans(&lines.join("\n"), language(path), &coloring.theme, coloring.fg);
+    let (old, new) = std::thread::scope(|s| {
+        let old = s.spawn(|| spans(&d.old));
+        let new = spans(&d.new);
+        (old.join().ok().flatten(), new)
+    });
+    Some(Colors { old: old?, new: new? })
+}
+
+/// Read, diff and color one file, in one piece (what the worker does for a
+/// short one).
+#[cfg(test)]
+pub fn load(top: &Path, spec: &FileSpec, coloring: Option<&Coloring>, max_lines: usize) -> Loaded {
+    let mut loaded = diff(top, spec, max_lines);
+    loaded.colors = coloring.and_then(|c| colors(&spec.path, &loaded.body, c));
+    loaded
 }
 
 /// The files of a commit against its first parent (a root commit: all new).
@@ -245,67 +266,124 @@ pub fn commit_specs(top: &Path, commit: &Commit) -> Vec<FileSpec> {
 
 /// What the view asks the worker to do.
 pub enum Job {
-    /// Read file `index` of the view.
-    Load { index: usize, top: PathBuf, spec: FileSpec, coloring: Option<Coloring>, max_lines: usize },
+    /// Read file `index` of the view. `serial` names this request: what comes
+    /// back says it, and the view drops what answers an older one.
+    Load { index: usize, serial: u64, top: PathBuf, spec: FileSpec, coloring: Option<Coloring>, max_lines: usize },
     /// List a commit's files.
     ListCommit { top: PathBuf, commit: Commit },
 }
 
 pub enum Done {
-    Loaded { index: usize, loaded: Loaded },
+    /// The file's diff; its colors too, unless it is long (`COLORS_LATER_LINES`).
+    Loaded { index: usize, serial: u64, loaded: Loaded },
+    /// The colors of a file whose diff was sent without them (none: no grammar).
+    Colors { index: usize, serial: u64, colors: Option<Colors> },
     Files { files: Vec<FileSpec> },
 }
 
-/// The thread: jobs run in the order sent, those marked urgent first.
+/// Run one job, sending what it makes (a load of a long file makes two).
+fn run(job: Job, send: &dyn Fn(Done) -> bool) {
+    match job {
+        Job::Load { index, serial, top, spec, coloring, max_lines } => {
+            let mut loaded = diff(&top, &spec, max_lines);
+            let Some(c) = coloring else {
+                send(Done::Loaded { index, serial, loaded });
+                return;
+            };
+            let long = matches!(&loaded.body, Body::Text(d) if d.old.len().max(d.new.len()) > COLORS_LATER_LINES);
+            if long {
+                let body = loaded.body.clone();
+                if !send(Done::Loaded { index, serial, loaded }) {
+                    return;
+                }
+                send(Done::Colors { index, serial, colors: colors(&spec.path, &body, &c) });
+            } else {
+                loaded.colors = colors(&spec.path, &loaded.body, &c);
+                send(Done::Loaded { index, serial, loaded });
+            }
+        }
+        Job::ListCommit { top, commit } => {
+            send(Done::Files { files: commit_specs(&top, &commit) });
+        }
+    }
+}
+
+/// The jobs waiting, and whether the worker is gone.
+#[derive(Default)]
+struct Queue {
+    jobs: VecDeque<Job>,
+    closed: bool,
+}
+
+type Shared = Arc<(Mutex<Queue>, Condvar)>;
+
+/// A few threads: jobs run in the order sent, those marked urgent first.
 pub struct Worker {
-    jobs: mpsc::Sender<(Job, bool)>,
+    queue: Shared,
     pub done: mpsc::Receiver<Done>,
 }
 
 impl Worker {
-    pub fn new(wake: impl Fn() + Send + 'static) -> Self {
-        let (job_tx, job_rx) = mpsc::channel::<(Job, bool)>();
+    pub fn new(wake: impl Fn() + Send + Sync + 'static) -> Self {
+        let queue: Shared = Default::default();
         let (done_tx, done_rx) = mpsc::channel();
-        std::thread::Builder::new()
-            .name("diff".into())
-            .spawn(move || {
-                let mut queue: std::collections::VecDeque<Job> = Default::default();
-                loop {
-                    if queue.is_empty() {
-                        let Ok((job, urgent)) = job_rx.recv() else { return };
-                        push(&mut queue, job, urgent);
-                    }
-                    for (job, urgent) in job_rx.try_iter() {
-                        push(&mut queue, job, urgent);
-                    }
-                    let Some(job) = queue.pop_front() else { continue };
-                    let done = match job {
-                        Job::Load { index, top, spec, coloring, max_lines } => {
-                            Done::Loaded { index, loaded: load(&top, &spec, coloring.as_ref(), max_lines) }
+        let wake = Arc::new(wake);
+        let threads = std::thread::available_parallelism().map_or(1, |n| n.get()).clamp(1, 4);
+        for _ in 0..threads {
+            let (queue, done_tx, wake) = (queue.clone(), done_tx.clone(), wake.clone());
+            std::thread::Builder::new()
+                .name("diff".into())
+                .spawn(move || {
+                    let send = |done: Done| {
+                        let sent = done_tx.send(done).is_ok();
+                        if sent {
+                            wake();
                         }
-                        Job::ListCommit { top, commit } => Done::Files { files: commit_specs(&top, &commit) },
+                        sent
                     };
-                    if done_tx.send(done).is_err() {
-                        return;
+                    loop {
+                        let job = {
+                            let (lock, ready) = &*queue;
+                            let mut q = lock.lock().unwrap();
+                            loop {
+                                if q.closed {
+                                    return;
+                                }
+                                if let Some(job) = q.jobs.pop_front() {
+                                    break job;
+                                }
+                                q = ready.wait(q).unwrap();
+                            }
+                        };
+                        run(job, &send);
                     }
-                    wake();
-                }
-            })
-            .expect("diff thread");
-        Self { jobs: job_tx, done: done_rx }
+                })
+                .expect("diff thread");
+        }
+        Self { queue, done: done_rx }
     }
 
     /// Queue `job`; `urgent` ones go before those waiting.
     pub fn send(&self, job: Job, urgent: bool) {
-        let _ = self.jobs.send((job, urgent));
+        let (lock, ready) = &*self.queue;
+        let mut q = lock.lock().unwrap();
+        if urgent {
+            q.jobs.push_front(job);
+        } else {
+            q.jobs.push_back(job);
+        }
+        ready.notify_one();
     }
 }
 
-fn push(queue: &mut std::collections::VecDeque<Job>, job: Job, urgent: bool) {
-    if urgent {
-        queue.push_front(job);
-    } else {
-        queue.push_back(job);
+impl Drop for Worker {
+    fn drop(&mut self) {
+        let (lock, ready) = &*self.queue;
+        if let Ok(mut q) = lock.lock() {
+            q.closed = true;
+            q.jobs.clear();
+        }
+        ready.notify_all();
     }
 }
 
@@ -435,18 +513,66 @@ mod tests {
         let worker = Worker::new(move || {
             let _ = tx.send(());
         });
-        let job = |index| Job::Load { index, top: repo.dir.clone(), spec: spec(Side::Missing, Side::Disk), coloring: None, max_lines: 100 };
+        let job = |index| Job::Load { index, serial: index as u64, top: repo.dir.clone(), spec: spec(Side::Missing, Side::Disk), coloring: None, max_lines: 100 };
         worker.send(job(0), false);
         worker.send(job(1), false);
         let mut got = Vec::new();
         for _ in 0..2 {
-            let Done::Loaded { index, loaded } = worker.done.recv_timeout(std::time::Duration::from_secs(10)).unwrap() else { panic!() };
+            let Done::Loaded { index, loaded, .. } = worker.done.recv_timeout(std::time::Duration::from_secs(10)).unwrap() else { panic!() };
             assert!(matches!(loaded.body, Body::Text(_)));
             got.push(index);
         }
         got.sort();
         assert_eq!(got, [0, 1]);
         assert!(rx.try_iter().count() >= 1, "woken");
+    }
+
+    fn coloring() -> Coloring {
+        let theme = Arc::new(syntect::highlighting::ThemeSet::load_defaults().themes["base16-ocean.dark"].clone());
+        Coloring { theme, fg: Color32::WHITE }
+    }
+
+    /// What the worker sends for one `a.rs` of `lines` lines, new on disk.
+    fn answers(name: &str, lines: usize, coloring: Option<Coloring>) -> Vec<Done> {
+        let repo = Repo::new(name);
+        repo.write("a.rs", &"let x = 1;\n".repeat(lines));
+        let worker = Worker::new(|| {});
+        let colored = coloring.is_some();
+        let mut s = spec(Side::Missing, Side::Disk);
+        s.path = "a.rs".into();
+        worker.send(Job::Load { index: 3, serial: 7, top: repo.dir.clone(), spec: s, coloring, max_lines: 100_000 }, true);
+        let first = worker.done.recv_timeout(std::time::Duration::from_secs(20)).unwrap();
+        let mut got = vec![first];
+        if colored && matches!(&got[0], Done::Loaded { loaded, .. } if loaded.colors.is_none()) {
+            // (Long enough for a debug build on a slow runner to color it.)
+            if let Ok(more) = worker.done.recv_timeout(std::time::Duration::from_secs(20)) {
+                got.push(more);
+            }
+        }
+        got
+    }
+
+    #[test]
+    fn a_long_files_colors_come_in_a_message_after_its_diff() {
+        let got = answers("long", COLORS_LATER_LINES + 1, Some(coloring()));
+        assert_eq!(got.len(), 2);
+        let Done::Loaded { index: 3, serial: 7, loaded } = &got[0] else { panic!("the diff first") };
+        assert!(matches!(loaded.body, Body::Text(_)));
+        assert!(loaded.colors.is_none());
+        let Done::Colors { index: 3, serial: 7, colors: Some(colors) } = &got[1] else { panic!("then the colors") };
+        assert_eq!(colors.new.len(), COLORS_LATER_LINES + 1);
+        assert!(colors.old.is_empty());
+    }
+
+    #[test]
+    fn a_short_file_has_its_colors_in_the_one_message() {
+        let got = answers("short", COLORS_LATER_LINES, Some(coloring()));
+        assert_eq!(got.len(), 1);
+        let Done::Loaded { loaded, .. } = &got[0] else { panic!() };
+        assert_eq!(loaded.colors.as_ref().map(|c| c.new.len()), Some(COLORS_LATER_LINES));
+        // Without a theme a long file has nothing to wait for either.
+        let got = answers("long-plain", COLORS_LATER_LINES + 1, None);
+        assert_eq!(got.len(), 1);
     }
 
     #[test]

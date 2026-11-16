@@ -1192,7 +1192,6 @@ impl VimApp {
             }
         }
 
-        self.paint_scrollbars(&ctx, &painter);
         match panel_rect {
             Some(r) => self.show_bottom_panel(ui, r),
             None => {
@@ -1206,6 +1205,8 @@ impl VimApp {
             let bottom = panel_rect.map_or_else(|| self.status_bar_top(rect, m).map_or(rect.max.y, |t| t.min(rect.max.y)), |r| r.min.y);
             self.show_diff(ui, &ctx, rect, bottom, m);
         }
+        // (After the diff view, whose bar is over it.)
+        self.paint_scrollbars(&ctx, &painter);
 
         // The resize cursor over a separator and a little beside it (the
         // press is Neovim's).

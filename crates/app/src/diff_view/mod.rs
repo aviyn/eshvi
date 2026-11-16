@@ -120,6 +120,9 @@ pub struct Section {
     pub loaded: Option<Loaded>,
     /// A job for it is queued or running.
     requested: bool,
+    /// The request whose answer this section takes (`Done::serial`): an
+    /// answer to an older one is out of date.
+    serial: u64,
     /// What's loaded is out of date (the disk or the colors changed).
     stale: bool,
     pub folded: bool,
@@ -131,7 +134,7 @@ pub struct Section {
 
 impl Section {
     fn new(spec: FileSpec) -> Self {
-        Self { spec, loaded: None, requested: false, stale: false, folded: false, expanded: BTreeSet::new(), rows: None }
+        Self { spec, loaded: None, requested: false, serial: 0, stale: false, folded: false, expanded: BTreeSet::new(), rows: None }
     }
 
     pub fn diff(&self) -> Option<&model::Diff> {
@@ -223,9 +226,15 @@ pub struct DiffView {
     /// The file to start at, once the sections are there.
     focus_path: Option<String>,
     worker: Worker,
+    /// The last request's serial (sections' requests are numbered across the view).
+    serial: u64,
     coloring: Option<Coloring>,
     pub scroll: f32,
     pub scroll_x: f32,
+    /// Where the rows are on the screen, as of the last frame.
+    body: egui::Rect,
+    /// The scroll bar is being dragged: its press and drag are not the rows'.
+    pub bar_drag: bool,
     /// A file whose header is to stay at the top while the files around it
     /// are read (their sizes move it): from opening at a file, or jumping to one.
     pin: Option<usize>,
@@ -256,7 +265,7 @@ pub struct DiffView {
 }
 
 impl DiffView {
-    pub fn new(req: Request, opts: Options, wake: impl Fn() + Send + 'static) -> Self {
+    pub fn new(req: Request, opts: Options, wake: impl Fn() + Send + Sync + 'static) -> Self {
         let worker = Worker::new(wake);
         let mut view = Self {
             top: req.top.clone(),
@@ -268,9 +277,12 @@ impl DiffView {
             awaiting_files: false,
             focus_path: req.focus,
             worker,
+            serial: 0,
             coloring: None,
             scroll: 0.0,
             scroll_x: 0.0,
+            body: egui::Rect::ZERO,
+            bar_drag: false,
             pin: None,
             cursor: Cursor { section: 0, row: None },
             anchor: None,
@@ -346,25 +358,38 @@ impl DiffView {
         let mut changed = false;
         while let Ok(done) = self.worker.done.try_recv() {
             changed = true;
-            match done {
-                Done::Files { files, .. } => self.set_files(files),
-                Done::Loaded { index, loaded, .. } => {
-                    let Some(s) = self.sections.get_mut(index) else { continue };
-                    s.loaded = Some(loaded);
-                    s.requested = false;
-                    s.rows = None;
-                    // The folds the click opened belong to the old diff.
-                    s.expanded.clear();
-                    self.prepare();
-                    if let Some(j) = self.jump.filter(|j| j.section == index) {
-                        self.jump = None;
-                        self.goto_in_section(j.section, j.forward);
-                    }
-                    self.after_load(index);
+            self.take(done);
+        }
+        changed
+    }
+
+    /// Apply one answer of the worker.
+    fn take(&mut self, done: Done) {
+        match done {
+            Done::Files { files, .. } => self.set_files(files),
+            Done::Loaded { index, serial, loaded } => {
+                // (The file was asked for again, or the files are others now.)
+                let Some(s) = self.sections.get_mut(index).filter(|s| s.serial == serial) else { return };
+                s.loaded = Some(loaded);
+                s.requested = false;
+                s.rows = None;
+                // The folds the click opened belong to the old diff.
+                s.expanded.clear();
+                self.prepare();
+                if let Some(j) = self.jump.filter(|j| j.section == index) {
+                    self.jump = None;
+                    self.goto_in_section(j.section, j.forward);
+                }
+                self.after_load(index);
+            }
+            Done::Colors { index, serial, colors } => {
+                // Only for the diff it was made from.
+                let Some(s) = self.sections.get_mut(index).filter(|s| s.serial == serial) else { return };
+                if let Some(l) = s.loaded.as_mut() {
+                    l.colors = colors;
                 }
             }
         }
-        changed
     }
 
     /// Make the rows of the loaded sections (again, where the layout or
@@ -456,8 +481,10 @@ impl DiffView {
         }
         s.requested = true;
         s.stale = false;
+        self.serial += 1;
+        s.serial = self.serial;
         self.worker.send(
-            Job::Load { index: i, top: self.top.clone(), spec: s.spec.clone(), coloring: self.coloring.clone(), max_lines: self.max_lines },
+            Job::Load { index: i, serial: s.serial, top: self.top.clone(), spec: s.spec.clone(), coloring: self.coloring.clone(), max_lines: self.max_lines },
             urgent,
         );
     }
@@ -503,6 +530,25 @@ impl DiffView {
     pub fn scroll_by(&mut self, dy: f32) {
         self.pin = None;
         self.scroll = (self.scroll + dy).clamp(0.0, self.max_scroll());
+    }
+
+    /// Scroll to `y` (the scroll bar's).
+    pub fn scroll_to(&mut self, y: f32) {
+        self.scroll_by(y - self.scroll);
+    }
+
+    /// What the scroll bar (`scrollbar::DIFF`) shows: all the sections' height,
+    /// in pixels, over the rows.
+    pub fn scrollbar_target(&self, fg: egui::Color32, bg: egui::Color32) -> Option<crate::scrollbar::Target> {
+        (!self.sections.is_empty()).then(|| crate::scrollbar::Target {
+            win: crate::scrollbar::DIFF,
+            area: self.body,
+            top: self.scroll.round() as i64,
+            bottom: (self.scroll + self.viewport_h).round() as i64,
+            lines: self.content_height().round() as i64,
+            fg,
+            bg,
+        })
     }
 
     /// Where the cursor's line is: its top and height.

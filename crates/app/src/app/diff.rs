@@ -74,6 +74,12 @@ impl VimApp {
         match ev {
             // The text of the key press that sent `:` to the command line (it was sent already).
             Event::Text(t) if t == ":" && self.diff_colon.take().is_some_and(|at| at.elapsed() < std::time::Duration::from_millis(200)) => true,
+            // The scroll bar over its rows takes the press (and the drag after it).
+            Event::PointerButton { pos, pressed: true, button: egui::PointerButton::Primary, .. }
+                if self.over_diff(*pos) && !self.over_popup(ctx, *pos) && self.scrollbar_press(*pos) =>
+            {
+                true
+            }
             Event::PointerButton { pos, pressed: true, .. } if self.over_diff(*pos) && !self.over_popup(ctx, *pos) => {
                 self.set_focus(Focus::Diff);
                 self.diff_pressed = true;
@@ -279,6 +285,7 @@ impl VimApp {
         let fonts = &self.grid_fonts;
         let code = |bold: bool, italic: bool| fonts.font_id(bold, italic);
         let look = Look { chrome, colors: DiffColors::from_editor(&self.editor), ui: ui_font, code: &code, row_h: m.height, char_w: m.width };
+        view.bar_drag = self.scrollbars.dragging();
         let actions = view.show(ui, area, &look, self.focus == Focus::Diff);
         self.diff = Some(view);
         for action in actions {

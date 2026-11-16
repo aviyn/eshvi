@@ -138,15 +138,17 @@ impl VimApp {
     }
 
     /// Open a link from a terminal's output: a file in an editor window (by
-    /// Neovim, relative to where the terminal is), a URL in the browser.
-    pub(super) fn open_term_link(&self, ctx: &egui::Context, target: crate::links::Target, dir: Option<std::path::PathBuf>) {
+    /// Neovim, relative to where the terminal is; the editor then has the
+    /// keyboard), a URL in the browser.
+    pub(super) fn open_term_link(&mut self, ctx: &egui::Context, target: crate::links::Target, dir: Option<std::path::PathBuf>) {
         use crate::links::Target;
         match target {
             Target::Url(url) => ctx.open_url(egui::OpenUrl::new_tab(url)),
             Target::File { path, line, col } => {
-                let path = std::path::Path::new(&path);
-                let full = if path.is_absolute() { path.to_path_buf() } else { dir.unwrap_or_default().join(path) };
+                let full = crate::links::resolve(&path, dir.as_deref(), crate::links::home().as_deref()).unwrap_or_else(|| path.into());
                 self.open_file_at(&full, line.unwrap_or(0) as usize, col.unwrap_or(1) as usize);
+                // The file is in the editor window, which then has the keyboard.
+                self.set_focus(Focus::Editor);
             }
         }
     }
