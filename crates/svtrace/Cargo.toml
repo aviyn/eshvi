@@ -3,6 +3,7 @@ name = "svtrace"
 edition.workspace = true
 version.workspace = true
 license.workspace = true
+publish = false
 
 [dependencies]
 anyhow.workspace = true

@@ -3,6 +3,7 @@ name = "app"
 edition.workspace = true
 version.workspace = true
 license.workspace = true
+publish = false
 
 [[bin]]
 name = "eshvi"

@@ -1,0 +1,19 @@
+The Rust crates built into Eshvi (eshvi and svtrace), grouped by the license
+Eshvi uses them under, with the text of each license. Each crate's source is
+on crates.io, and at the address given beside it.
+
+Overview:
+{{#each overview}}
+  {{{name}}}: {{count}}
+{{/each}}
+{{#each licenses}}
+
+===== {{{name}}} =====
+
+Used by:
+{{#each used_by}}
+  {{crate.name}} {{crate.version}}{{#if crate.repository}} ({{crate.repository}}){{/if}}
+{{/each}}
+
+{{{text}}}
+{{/each}}

@@ -31,9 +31,12 @@ if [ "$with_trace" = 1 ]; then
   cp "$slang" "$app/Contents/MacOS/slang"
 fi
 cp "$root/assets/icon/eshvi.icns" "$app/Contents/Resources/eshvi.icns"
-# The icons' and the grammar's licenses ask for their credit and text to go with every copy.
+# The icons', the grammar's and the Rust crates' licenses ask for their credit and text
+# to go with every copy.
 {
   cat "$root/assets/THIRD-PARTY-NOTICES.txt"
+  printf '\n\n===== Rust crates =====\n\n'
+  cat "$root/assets/rust-crates.LICENSES.txt"
   printf '\n\n===== Material Icon Theme =====\n\n'
   cat "$root/assets/material-icons.LICENSE"
   printf '\n\n===== Codicons =====\n\n'

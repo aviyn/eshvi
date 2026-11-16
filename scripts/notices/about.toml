@@ -1,0 +1,26 @@
+# cargo-about's settings for scripts/rust-notices.sh: the Rust crates built into
+# eshvi and svtrace on macOS, and the licenses Eshvi takes them under (the first
+# that fits, for a crate offering a choice).
+accepted = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "0BSD",
+  "Unlicense",
+  "CC0-1.0",
+  "Unicode-3.0",
+  "OFL-1.1",
+  "Ubuntu-font-1.0",
+  "MPL-2.0",
+  "LGPL-3.0",
+]
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin"]
+ignore-build-dependencies = true
+ignore-dev-dependencies = true
+ignore-transitive-dependencies = false
+# Eshvi's own crates (publish = false) are under its LICENSE.
+private = { ignore = true }

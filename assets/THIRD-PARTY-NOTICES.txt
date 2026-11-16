@@ -18,3 +18,18 @@ Material Icon Theme
   https://github.com/material-extensions/vscode-material-icon-theme
   Copyright (c) 2025 Material Extensions
   File and folder icons, under the MIT License.
+
+Rust crates
+  The libraries eshvi and svtrace are built from, each under its own license
+  (MIT, Apache 2.0, BSD and others), listed with the license texts in the
+  section "Rust crates" below. Among them:
+  - nvim-rs (https://github.com/KillTheMule/nvim-rs), Eshvi's Neovim client,
+    under the GNU Lesser General Public License v3.0 and linked statically.
+    Eshvi's complete source and how to build it are at
+    https://github.com/aviyn/eshvi, so you can rebuild Eshvi with a changed
+    nvim-rs.
+  - nucleo-matcher (https://github.com/helix-editor/nucleo), the pickers'
+    matching, under the Mozilla Public License 2.0; its source is at that
+    address and on crates.io.
+  - egui's built-in fonts (epaint_default_fonts), under the SIL Open Font
+    License 1.1 and the Ubuntu Font Licence 1.0.
