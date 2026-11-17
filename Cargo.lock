@@ -277,7 +277,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
 name = "app"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "arboard",
@@ -2264,7 +2264,7 @@ dependencies = [
 
 [[package]]
 name = "grid"
-version = "0.1.2"
+version = "0.1.3"
 
 [[package]]
 name = "gtk"
@@ -3281,7 +3281,7 @@ dependencies = [
 
 [[package]]
 name = "nvim-bridge"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "arboard",
@@ -4911,7 +4911,7 @@ dependencies = [
 
 [[package]]
 name = "svtrace"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "env_logger",
@@ -5030,7 +5030,7 @@ dependencies = [
 
 [[package]]
 name = "term"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "alacritty_terminal",
  "libc",
