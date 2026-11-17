@@ -168,6 +168,9 @@ pub fn body(old: &Content, new: &Content, max_lines: usize) -> Body {
     Body::Text(Diff::new(old, new))
 }
 
+/// Lines of each side of a diff, old and new, as ranges in order.
+pub type Shown = (Vec<Range<usize>>, Vec<Range<usize>>);
+
 impl Diff {
     pub fn new(old: &str, new: &str) -> Diff {
         let (a, b) = (lines_of(old), lines_of(new));
@@ -326,6 +329,34 @@ impl Diff {
             }
         }
         out
+    }
+
+    /// The lines the rows show (the folds' left out), of each side. What the view colors.
+    pub fn shown(&self, context: usize, expanded: &BTreeSet<usize>) -> Shown {
+        fn add(to: &mut Vec<Range<usize>>, r: Range<usize>) {
+            if r.is_empty() {
+                return;
+            }
+            match to.last_mut() {
+                Some(last) if last.end == r.start => last.end = r.end,
+                _ => to.push(r),
+            }
+        }
+        let (mut old_lines, mut new_lines) = (Vec::new(), Vec::new());
+        for piece in self.pieces(context, expanded) {
+            match piece {
+                Piece::Fold { .. } => {}
+                Piece::Equal { old, new, len } => {
+                    add(&mut old_lines, old..old + len);
+                    add(&mut new_lines, new..new + len);
+                }
+                Piece::Change { old, new } => {
+                    add(&mut old_lines, old);
+                    add(&mut new_lines, new);
+                }
+            }
+        }
+        (old_lines, new_lines)
     }
 
     /// The unified layout's rows.
@@ -720,6 +751,21 @@ mod tests {
         let rows = d.unified(3, &none());
         assert_eq!(rows.iter().filter(|r| matches!(r, Row::Fold { .. })).count(), 1, "{rows:?}");
         assert_eq!(rows.iter().find_map(|r| if let Row::Fold { hidden, .. } = r { Some(*hidden) } else { None }), Some(9));
+    }
+
+    #[test]
+    fn the_lines_shown_are_those_not_folded_on_each_side() {
+        let old: Vec<String> = (0..40).map(|i| format!("l{i}")).collect();
+        let mut new = old.clone();
+        new[20] = "changed".into();
+        new.insert(30, "added".into());
+        let d = diff(&old.iter().map(String::as_str).collect::<Vec<_>>(), &new.iter().map(String::as_str).collect::<Vec<_>>());
+        let (o, n) = d.shown(3, &none());
+        assert_eq!(o, vec![17..24, 27..33]);
+        assert_eq!(n, vec![17..24, 27..34]);
+        // Every fold opened: all of both sides.
+        let all: BTreeSet<usize> = (0..10).collect();
+        assert_eq!(d.shown(3, &all), (vec![0..40], vec![0..41]));
     }
 
     #[test]

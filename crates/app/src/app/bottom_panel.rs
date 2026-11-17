@@ -1,8 +1,9 @@
 //! The bottom panel: Problems,
-//! drawn by `tree_view` from the diagnostics Neovim reports, and terminals
-//! (`crates/term`, drawn by `terminal_view`), under Neovim's grid and as wide as
-//! the editor. Its height and what it shows belong to the GUI; `:EshviPanel`,
-//! `:EshviTerminal` and `:EshviProblems` only tell it (`gui_panel`).
+//! drawn by `tree_view` from the diagnostics Neovim reports, the Git output (what
+//! Source Control's git commands said: a terminal with no process, fed their text)
+//! and terminals (`crates/term`, drawn by `terminal_view`), under Neovim's grid and as
+//! wide as the editor. Its height and what it shows belong to the GUI; `:EshviPanel`,
+//! `:EshviTerminal`, `:EshviProblems` and `:EshviGitOutput` only tell it (`gui_panel`).
 //!
 //! The strip (tabs, buttons, Problems' controls) is `paint_strip`, which has
 //! the data it draws and gives back where its buttons are; the keys and
@@ -24,6 +25,8 @@ use crate::tree_view::{self, TreeView};
 pub(super) enum View {
     #[default]
     Problems,
+    /// The Git output.
+    Git,
     Terminals,
 }
 
@@ -139,7 +142,10 @@ pub(super) struct BottomPanel {
     /// set it); until then `[terminal] height` rows.
     pub height: Option<f32>,
     pub tabs: TabSet,
+    /// The terminals' views, and the Git output's (`git`), which no tab has.
     pub views: HashMap<u64, TerminalView>,
+    /// The Git output's view in `views`, made when first wanted.
+    pub git: Option<u64>,
     pub problems: problems::Model,
     pub tree: TreeView,
     /// The problem rows as last given to the tree, by id.
@@ -169,6 +175,7 @@ impl BottomPanel {
             height: None,
             tabs: TabSet::default(),
             views: HashMap::new(),
+            git: None,
             problems: problems::Model::new(),
             tree,
             rows: HashMap::new(),
@@ -183,11 +190,13 @@ impl BottomPanel {
     }
 
     /// The shown terminals' ids, left to right.
+    /// (The Git output is one, as far as drawing and the keyboard go.)
     pub fn shown_terminals(&self) -> Vec<u64> {
-        if self.view != View::Terminals {
-            return Vec::new();
+        match self.view {
+            View::Terminals => [self.tabs.current, self.tabs.split].into_iter().flatten().collect(),
+            View::Git => self.git.into_iter().collect(),
+            View::Problems => Vec::new(),
         }
-        [self.tabs.current, self.tabs.split].into_iter().flatten().collect()
     }
 
     pub fn mark_dirty(&mut self) {
@@ -232,6 +241,8 @@ pub(super) struct Strip<'a> {
     pub tabs: &'a [StripTab],
     /// Problems is the view shown.
     pub problems_current: bool,
+    /// The Git output is the view shown.
+    pub git_current: bool,
     /// The panel has the keyboard.
     pub focused: bool,
     /// The color of the panel's content, which the current tab joins.
@@ -252,6 +263,7 @@ pub(super) struct Strip<'a> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Hit {
     Problems,
+    Git,
     Tab(u64),
     CloseTab(u64),
     New,
@@ -271,6 +283,7 @@ pub(super) struct StripHits {
     pub tabs: Vec<(Rect, u64)>,
     pub closes: Vec<(Rect, u64)>,
     pub problems: Option<Rect>,
+    pub git: Option<Rect>,
     pub new: Option<Rect>,
     pub split: Option<Rect>,
     pub close: Option<Rect>,
@@ -296,6 +309,8 @@ impl StripHits {
             Some(Hit::Close)
         } else if on(&self.problems) {
             Some(Hit::Problems)
+        } else if on(&self.git) {
+            Some(Hit::Git)
         } else if on(&self.new) {
             Some(Hit::New)
         } else {
@@ -304,7 +319,7 @@ impl StripHits {
     }
 }
 
-/// Draw the strip: Problems and a tab per terminal (a prompt glyph and the
+/// Draw the strip: Problems, Git and a tab per terminal (a prompt glyph and the
 /// title, dimmed once the process exited, "×" while hovered), "+", the split
 /// button, "×" at the right end, and, with Problems shown, its controls: the
 /// current-file switch, the severity toggles and room for the filter field.
@@ -344,7 +359,10 @@ pub(super) fn paint_strip(
     let badge_font = style::scaled(font, style::BADGE);
     let badge_galley = (count > 0).then(|| painter.layout_no_wrap(count.to_string(), badge_font, fg));
     let badge_w = badge_galley.as_ref().map_or(0.0, |g| (g.size().x + 10.0).max(g.size().y + 4.0) + 6.0);
-    let mut widths = vec![problems_galley.size().x + badge_w + 2.0 * pad];
+    let git_color = chrome.text(model.git_current && focused);
+    let git_galley = painter.layout_no_wrap("Git".into(), font.clone(), git_color);
+    let mut widths = vec![problems_galley.size().x + badge_w + 2.0 * pad, git_galley.size().x + 2.0 * pad];
+    let fixed_tabs = widths.len();
     // (Room for a "×" shown while hovered.)
     let close_w = style::button_size(strip.height());
     let fixed = glyph_w + style::GAP + 4.0 + close_w + 1.5 * pad;
@@ -353,13 +371,13 @@ pub(super) fn paint_strip(
     // tabs end before "+", split and "×".
     let room = strip.max.x - 6.0 - strip.height() * 3.0 - 10.0 - strip.min.x;
     if widths.iter().sum::<f32>() > room && !galleys.is_empty() {
-        let title_max = ((room - widths[0]) / galleys.len() as f32 - fixed).max(font.size * 2.0);
+        let title_max = ((room - widths[..fixed_tabs].iter().sum::<f32>()) / galleys.len() as f32 - fixed).max(font.size * 2.0);
         for (i, (.., color, g)) in galleys.iter_mut().enumerate() {
             if g.size().x > title_max {
                 let mut job = egui::text::LayoutJob::single_section(g.text().to_owned(), egui::TextFormat::simple(font.clone(), *color));
                 job.wrap = egui::text::TextWrapping::truncate_at_width(title_max);
                 *g = painter.layout_job(job);
-                widths[i + 1] = fixed + g.size().x;
+                widths[i + fixed_tabs] = fixed + g.size().x;
             }
         }
     }
@@ -371,6 +389,7 @@ pub(super) fn paint_strip(
     let tabs_room = Rect::from_x_y_ranges(strip.min.x..=tabs_end.max(strip.min.x), strip.y_range());
     let tab_painter = painter.with_clip_rect(painter.clip_rect().intersect(tabs_room));
     let problems_rect = tabs.remove(0);
+    let git_rect = tabs.remove(0);
     if model.problems_current {
         style::paint_current_tab(&tab_painter, problems_rect, focused, chrome, model.content_bg);
     }
@@ -386,6 +405,12 @@ pub(super) fn paint_strip(
     }
     style::paint_tab_divider(&tab_painter, problems_rect, chrome);
     hits.problems = Some(problems_rect.intersect(tabs_room));
+    if model.git_current {
+        style::paint_current_tab(&tab_painter, git_rect, focused, chrome, model.content_bg);
+    }
+    tab_painter.galley(Pos2::new(git_rect.min.x + pad, git_rect.center().y - git_galley.size().y / 2.0), git_galley, git_color);
+    style::paint_tab_divider(&tab_painter, git_rect, chrome);
+    hits.git = Some(git_rect.intersect(tabs_room));
     for ((id, current, color, galley), rect) in galleys.into_iter().zip(tabs) {
         if current {
             style::paint_current_tab(&tab_painter, rect, focused, chrome, model.content_bg);
@@ -509,6 +534,8 @@ pub(super) struct PanelOut {
     pub pressed: Option<u64>,
     pub links: Vec<(crate::links::Target, Option<std::path::PathBuf>)>,
     pub actions: Vec<tree_view::Action>,
+    /// The terminals' scroll bars.
+    pub bars: Vec<crate::scrollbar::Target>,
 }
 
 impl VimApp {
@@ -587,8 +614,10 @@ impl VimApp {
 
     /// The focus the panel's current view has.
     pub(super) fn panel_focus(&self) -> Focus {
-        match (self.bottom.view, self.bottom.tabs.current) {
-            (View::Terminals, Some(id)) => Focus::Terminal(id),
+        match (self.bottom.view, self.bottom.tabs.current, self.bottom.git) {
+            (View::Terminals, Some(id), _) => Focus::Terminal(id),
+            // (The Git output is a terminal to the keyboard: its keys are the terminal's, for selecting and searching.)
+            (View::Git, _, Some(id)) => Focus::Terminal(id),
             _ => Focus::Problems,
         }
     }
@@ -628,7 +657,7 @@ impl VimApp {
             Region::Panel => {
                 // Coming in from the left: the left terminal; from the right, none yet.
                 let mut f = self.panel_focus();
-                if let (Focus::Terminal(_), Dir::Left, Some(s)) = (f, dir, self.bottom.tabs.split) {
+                if let (Focus::Terminal(_), Dir::Left, Some(s), View::Terminals) = (f, dir, self.bottom.tabs.split, self.bottom.view) {
                     f = Focus::Terminal(s);
                 }
                 self.set_focus(f);
@@ -666,7 +695,7 @@ impl VimApp {
 
     // Commands.
 
-    /// `:EshviPanel`, `:EshviTerminal` and `:EshviProblems`.
+    /// `:EshviPanel`, `:EshviTerminal`, `:EshviProblems` and `:EshviGitOutput`.
     pub(super) fn panel_command(&mut self, ctx: &egui::Context, kind: &str, args: &[String]) {
         if kind == "agent" {
             return self.agent_command(ctx, args);
@@ -684,16 +713,17 @@ impl VimApp {
             },
             "terminal" => self.terminal_command(ctx, arg(0).unwrap_or("toggle"), arg(1)),
             "problems" => self.problems_command(args),
+            "git_output" => self.git_output_command(ctx, arg(0).unwrap_or("toggle")),
             _ => {}
         }
     }
 
     /// Show the panel as it was last (Problems the first time: it starts no shell), focused.
     fn show_panel(&mut self, ctx: &egui::Context) {
-        if self.bottom.view == View::Terminals && !self.bottom.tabs.tabs.is_empty() {
-            self.show_terminals(ctx);
-        } else {
-            self.show_problems();
+        match self.bottom.view {
+            View::Terminals if !self.bottom.tabs.tabs.is_empty() => self.show_terminals(ctx),
+            View::Git => self.show_git_output(ctx),
+            _ => self.show_problems(),
         }
     }
 
@@ -722,6 +752,69 @@ impl VimApp {
         self.bottom.shown = true;
         self.bottom.view = View::Problems;
         self.set_focus(Focus::Problems);
+    }
+
+    /// Show the Git output, focused.
+    fn show_git_output(&mut self, ctx: &egui::Context) {
+        self.ensure_git_output(ctx, true);
+        self.bottom.shown = true;
+        self.bottom.view = View::Git;
+        self.set_focus(self.panel_focus());
+    }
+
+    /// `:EshviGitOutput [toggle|show|hide]`, as `:EshviProblems` does them.
+    fn git_output_command(&mut self, ctx: &egui::Context, action: &str) {
+        match action {
+            "toggle" if self.bottom.shown && self.bottom.view == View::Git => {
+                if self.focus.in_panel() {
+                    self.hide_panel();
+                } else {
+                    self.set_focus(self.panel_focus());
+                }
+            }
+            "toggle" | "show" => self.show_git_output(ctx),
+            "hide" => {
+                if self.bottom.view == View::Git {
+                    self.hide_panel();
+                }
+            }
+            other => self.editor.push_message("emsg", &format!("EshviGitOutput: unknown action {other}")),
+        }
+    }
+
+    /// The Git output's view, made if there isn't one: a terminal with no process, no cursor,
+    /// that the panel's keys and mouse treat as any terminal's. `hint` says in it what it is for.
+    fn ensure_git_output(&mut self, ctx: &egui::Context, hint: bool) -> Option<&mut TerminalView> {
+        if self.bottom.git.is_none() {
+            let wake = {
+                let ctx = ctx.clone();
+                Arc::new(move || ctx.request_repaint()) as term::Wake
+            };
+            let size = term::Size { cols: 80, rows: 24, cell_w: 8, cell_h: 16 };
+            let t = term::Terminal::output(size, term::Palette::default(), self.config.terminal.scrollback, Some(wake));
+            // (Hide the cursor: there is nothing to type.)
+            t.feed(b"\x1b[?25l");
+            if hint {
+                t.feed(b"\x1b[2mThe git commands run from Source Control, and what they say, are shown here.\x1b[0m\r\n\r\n");
+            }
+            let view = TerminalView::new(t);
+            self.bottom.git = Some(view.id());
+            self.bottom.views.insert(view.id(), view);
+        }
+        let id = self.bottom.git?;
+        self.bottom.views.get_mut(&id)
+    }
+
+    /// What git commands said (`OpDone::Ran`): written at the end of the Git output.
+    pub(super) fn add_git_output(&mut self, ctx: &egui::Context, ran: &[crate::git::Ran]) {
+        if ran.is_empty() {
+            return;
+        }
+        if let Some(view) = self.ensure_git_output(ctx, false) {
+            for r in ran {
+                view.terminal().feed(r.transcript().as_bytes());
+            }
+        }
     }
 
     fn terminal_command(&mut self, ctx: &egui::Context, action: &str, arg: Option<&str>) {
@@ -1086,6 +1179,7 @@ impl VimApp {
             Some(Hit::Tab(id)) if primary => self.select_terminal(id),
             Some(Hit::CloseTab(id)) if primary => self.close_terminal(id),
             Some(Hit::Problems) if primary => self.show_problems(),
+            Some(Hit::Git) if primary => self.show_git_output(ctx),
             Some(Hit::New) if primary => {
                 self.new_terminal(ctx, false);
             }
@@ -1110,6 +1204,7 @@ impl VimApp {
                 let focus = match (self.bottom.view, in_strip) {
                     (View::Terminals, false) => self.terminal_at(pos).map_or_else(|| self.panel_focus(), Focus::Terminal),
                     (View::Terminals, true) => self.panel_focus(),
+                    (View::Git, _) => self.panel_focus(),
                     (View::Problems, _) => Focus::Problems,
                 };
                 self.set_focus(focus);
@@ -1136,6 +1231,10 @@ impl VimApp {
         let ctx = ui.ctx().clone();
         self.bottom.rect = Some(rect);
         self.sync_problem_context();
+        // (A session can bring the panel back showing it.)
+        if self.bottom.view == View::Git {
+            self.ensure_git_output(&ctx, true);
+        }
         let m = self.renderer.metrics();
         let chrome = Chrome::from_editor(&self.editor);
         let painter = ui.painter_at(rect);
@@ -1159,6 +1258,7 @@ impl VimApp {
         let model = Strip {
             tabs: &tabs,
             problems_current: self.bottom.view == View::Problems,
+            git_current: self.bottom.view == View::Git,
             focused: self.focus.in_panel(),
             content_bg: chrome.panel,
             badge: problems.badge(),
@@ -1177,7 +1277,7 @@ impl VimApp {
         content_ui.set_clip_rect(content.intersect(ui.clip_rect()));
         match self.bottom.view {
             View::Problems => self.show_problems_list(&mut content_ui, content, &chrome, &mut out),
-            View::Terminals => self.show_terminals_view(&mut content_ui, content, &chrome, &mut out),
+            View::Git | View::Terminals => self.show_terminals_view(&mut content_ui, content, &chrome, &mut out),
         }
         // The filter field over its spot in the strip, taking the keyboard when asked.
         if let Some(r) = self.bottom.hits.filter.filter(|_| self.bottom.view == View::Problems) {
@@ -1205,6 +1305,7 @@ impl VimApp {
         if let Some(id) = out.pressed {
             self.set_focus(Focus::Terminal(id));
         }
+        self.term_bars.extend(out.bars);
         for (target, dir) in out.links {
             self.open_term_link(&ctx, target, dir);
         }
@@ -1252,7 +1353,10 @@ impl VimApp {
             let Some(view) = self.bottom.views.get_mut(id) else { continue };
             let mut child = ui.new_child(egui::UiBuilder::new().max_rect(r));
             child.set_clip_rect(r.intersect(ui.clip_rect()));
+            view.bar_drag = self.scrollbars.dragging();
+            view.covered.clone_from(&self.popup_rects);
             let o = view.show(&mut child, &look, self.focus == Focus::Terminal(*id));
+            out.bars.extend(view.scrollbar_target(&look));
             if o.pressed {
                 out.pressed = Some(*id);
             }
@@ -1267,9 +1371,10 @@ impl VimApp {
 
     // The status bar and the window title follow the focus.
 
-    /// The focused terminal's tab title, or "Problems", while the panel has the keyboard.
+    /// The focused terminal's tab title, or "Problems" or "Git", while the panel has the keyboard.
     pub(super) fn focus_label(&self) -> Option<String> {
         match self.focus {
+            Focus::Terminal(id) if self.bottom.git == Some(id) => Some("Git".into()),
             Focus::Terminal(id) => self.bottom.tabs.get(id).map(TabState::title),
             Focus::Agent(id) => self.agents.data.get(&id).map(|t| t.shown_title().to_owned()),
             Focus::Problems => Some("Problems".into()),
@@ -1319,6 +1424,7 @@ impl VimApp {
             height: self.bottom.rect.map_or_else(|| self.bottom.height.unwrap_or(0.0), |r| r.height()).round(),
             view: match self.bottom.view {
                 View::Problems => "problems",
+                View::Git => "git",
                 View::Terminals => "terminal",
             }
             .into(),
@@ -1326,12 +1432,12 @@ impl VimApp {
     }
 
     /// A loaded session's panel: shown as it was, a terminal view as Problems
-    /// (terminals aren't restored).
+    /// (terminals aren't restored; the Git output is, empty).
     pub(super) fn apply_panel_session(&mut self, p: &nvim_bridge::gui::PanelSession) {
         if !self.panel_enabled {
             return;
         }
-        self.bottom.view = View::Problems;
+        self.bottom.view = if p.view == "git" { View::Git } else { View::Problems };
         if p.height >= 1.0 {
             self.bottom.height = Some(p.height);
         }
@@ -1486,35 +1592,38 @@ mod tests {
     fn strip_buttons_are_found_where_they_were_drawn() {
         let r = |x: f32, w: f32| Rect::from_min_size(Pos2::new(x, 0.0), Vec2::new(w, 20.0));
         let hits = StripHits {
-            tabs: vec![(r(60.0, 80.0), 7)],
-            closes: vec![(r(120.0, 18.0), 7)],
+            tabs: vec![(r(100.0, 80.0), 7)],
+            closes: vec![(r(160.0, 18.0), 7)],
             problems: Some(r(0.0, 60.0)),
-            new: Some(r(140.0, 20.0)),
-            split: Some(r(160.0, 20.0)),
-            close: Some(r(400.0, 20.0)),
-            scope: Some(r(300.0, 20.0)),
-            severity: vec![(r(200.0, 40.0), Severity::Error)],
-            filter: Some(r(250.0, 40.0)),
+            git: Some(r(60.0, 40.0)),
+            new: Some(r(180.0, 20.0)),
+            split: Some(r(200.0, 20.0)),
+            close: Some(r(440.0, 20.0)),
+            scope: Some(r(340.0, 20.0)),
+            severity: vec![(r(240.0, 40.0), Severity::Error)],
+            filter: Some(r(290.0, 40.0)),
             ..Default::default()
         };
         let at = |x: f32| hits.at(Pos2::new(x, 10.0));
         assert_eq!(at(10.0), Some(Hit::Problems));
-        assert_eq!(at(70.0), Some(Hit::Tab(7)));
+        assert_eq!(at(70.0), Some(Hit::Git));
+        assert_eq!(at(110.0), Some(Hit::Tab(7)));
         // The "×" over the tab wins.
-        assert_eq!(at(125.0), Some(Hit::CloseTab(7)));
-        assert_eq!(at(150.0), Some(Hit::New));
-        assert_eq!(at(170.0), Some(Hit::Split));
-        assert_eq!(at(210.0), Some(Hit::Severity(Severity::Error)));
-        assert_eq!(at(260.0), Some(Hit::Filter));
-        assert_eq!(at(310.0), Some(Hit::Scope));
-        assert_eq!(at(410.0), Some(Hit::Close));
-        assert_eq!(at(350.0), None);
+        assert_eq!(at(165.0), Some(Hit::CloseTab(7)));
+        assert_eq!(at(190.0), Some(Hit::New));
+        assert_eq!(at(210.0), Some(Hit::Split));
+        assert_eq!(at(250.0), Some(Hit::Severity(Severity::Error)));
+        assert_eq!(at(300.0), Some(Hit::Filter));
+        assert_eq!(at(350.0), Some(Hit::Scope));
+        assert_eq!(at(450.0), Some(Hit::Close));
+        assert_eq!(at(390.0), None);
     }
 
     fn model<'a>(tabs: &'a [StripTab], problems_current: bool, file_scope: bool) -> Strip<'a> {
         Strip {
             tabs,
             problems_current,
+            git_current: false,
             focused: true,
             content_bg: Color32::TRANSPARENT,
             badge: (2, 1),
@@ -1534,21 +1643,28 @@ mod tests {
         ]
     }
 
-    /// The strip with Problems shown and with a terminal; wide and narrow; dark and light.
+    /// The strip with Problems shown, the Git output and with a terminal; wide and narrow; dark and light.
     #[test]
     fn the_strip() {
         use egui_kittest::Harness;
         let mut results = egui_kittest::SnapshotResults::new();
         for (theme, chrome, _) in crate::style::tests::themes() {
-            for (name, width, problems_current, file_scope) in
-                [("problems", 760.0, true, false), ("problems_file", 760.0, true, true), ("terminals", 760.0, false, false), ("narrow", 420.0, true, false)]
-            {
+            for (name, width, problems_current, file_scope) in [
+                ("problems", 840.0, true, false),
+                ("problems_file", 840.0, true, true),
+                ("git", 840.0, false, false),
+                ("terminals", 840.0, false, false),
+                ("narrow", 420.0, true, false),
+            ] {
                 let mut harness = Harness::builder().with_size(Vec2::new(width, 28.0)).with_pixels_per_point(2.0).with_render_cursor(false).wgpu().build_ui(move |ui| {
                     let screen = ui.ctx().content_rect();
                     ui.painter().rect_filled(screen, 0.0, chrome.bg);
-                    let tabs = some_tabs();
+                    let mut tabs = some_tabs();
+                    // (The Git output is shown with no terminal tab current.)
+                    tabs.iter_mut().for_each(|t| t.current &= name != "git");
                     let mut icons = IconTextures::default();
-                    let m = model(&tabs, problems_current, file_scope);
+                    let mut m = model(&tabs, problems_current, file_scope);
+                    m.git_current = name == "git";
                     paint_strip(ui.painter(), screen, &m, &chrome, &FontId::proportional(12.0), &mut icons);
                 });
                 harness.run();
@@ -1576,16 +1692,16 @@ mod tests {
             let hits = out.borrow().clone();
             hits
         };
-        let wide = hits_at(760.0, true);
+        let wide = hits_at(840.0, true);
         assert_eq!(wide.tabs.len(), 3);
-        assert!(wide.problems.is_some() && wide.new.is_some() && wide.split.is_some() && wide.close.is_some());
+        assert!(wide.problems.is_some() && wide.git.is_some_and(|g| g.min.x >= wide.problems.unwrap().max.x - 0.5) && wide.new.is_some() && wide.split.is_some() && wide.close.is_some());
         assert_eq!(wide.severity.len(), 3);
         assert!(wide.scope.is_some() && wide.filter.is_some());
         // The controls don't overlap the tabs, "+" or split.
         let tabs_end = wide.split.unwrap().max.x;
         assert!(wide.filter.unwrap().min.x > tabs_end && wide.severity.iter().all(|(r, _)| r.min.x > tabs_end));
         // With a terminal shown, Problems' controls aren't there.
-        let term = hits_at(760.0, false);
+        let term = hits_at(840.0, false);
         assert!(term.scope.is_none() && term.filter.is_none() && term.severity.is_empty());
         // A narrow strip drops the field, then the toggles.
         let narrow = hits_at(430.0, true);
@@ -1674,5 +1790,145 @@ mod tests {
 
     fn model_for(tabs: &[StripTab]) -> Strip<'_> {
         model(tabs, true, false)
+    }
+
+    /// A git command as the operations thread would have recorded it, at 12:03:04.
+    fn ran(args: &[&str], code: i32, took_ms: u64, stdout: &str, stderr: &str) -> crate::git::Ran {
+        use chrono::TimeZone;
+        crate::git::Ran {
+            args: args.iter().map(|a| a.to_string()).collect(),
+            dir: "/p".into(),
+            when: chrono::Local.with_ymd_and_hms(2026, 11, 16, 12, 3, 4).unwrap(),
+            took: Duration::from_millis(took_ms),
+            code: Some(code),
+            stdout: stdout.into(),
+            stderr: stderr.into(),
+        }
+    }
+
+    fn some_git_output() -> Vec<crate::git::Ran> {
+        vec![
+            ran(&["add", "-A"], 0, 40, "", ""),
+            ran(&["commit", "-m", "Show the Git output"], 0, 310, "[main 1a2b3c4] Show the Git output\n 3 files changed, 120 insertions(+), 4 deletions(-)", ""),
+            ran(
+                &["push", "origin", "main"],
+                0,
+                2300,
+                "",
+                "remote: Create a pull request for 'main' on GitHub by visiting:\nremote:   https://github.com/o/r/pull/new/main\nTo github.com:o/r.git\n   a1b2c3d..e4f5a6b  main -> main",
+            ),
+            ran(&["pull", "--no-edit", "--no-rebase"], 1, 120, "", "fatal: Authentication failed for 'https://github.com/o/r.git/'"),
+        ]
+    }
+
+    /// The text on a terminal's screen, a row each, with the empty rows after it cut.
+    fn screen_text(t: &term::Terminal) -> Vec<String> {
+        let (cols, rows) = (t.size().cols as usize, t.size().rows as usize);
+        let mut out: Vec<String> = (0..rows).map(|r| t.text_between((r, 0), (r, cols - 1)).trim_end().to_owned()).collect();
+        while out.last().is_some_and(String::is_empty) {
+            out.pop();
+        }
+        out
+    }
+
+    #[test]
+    fn the_git_output_shows_each_command_and_its_output() {
+        let t = term::Terminal::output(term::Size { cols: 90, rows: 30, cell_w: 8, cell_h: 16 }, term::Palette::default(), 1000, None);
+        for r in some_git_output() {
+            t.feed(r.transcript().as_bytes());
+        }
+        let rows = screen_text(&t);
+        // The time, then the command; its words as they were; a blank line between entries.
+        assert_eq!(rows[0], "[12:03:04] git add -A");
+        assert_eq!(rows[1], "");
+        assert_eq!(rows[2], "[12:03:04] git commit -m 'Show the Git output'");
+        assert_eq!(rows[3], "[main 1a2b3c4] Show the Git output");
+        assert_eq!(rows[6], "[12:03:04] git push origin main (2.3s)");
+        assert_eq!(rows[7], "remote: Create a pull request for 'main' on GitHub by visiting:");
+        // A failure ends with its exit code.
+        assert_eq!(&rows[rows.len() - 2..], ["fatal: Authentication failed for 'https://github.com/o/r.git/'", "exit 1"].map(String::from));
+        // The command is bold and the time dim; the exit line is red.
+        let snap = t.snapshot();
+        assert!(snap.row(0)[0].flags.contains(term::Flags::DIM));
+        assert!(snap.row(0)[12].flags.contains(term::Flags::BOLD));
+        let last = rows.len() - 1;
+        assert_eq!(snap.row(last)[0].fg, term::Color::Named(term::NamedColor::Red));
+    }
+
+    #[test]
+    fn the_git_output_is_a_terminal_to_the_panel_but_has_no_tab() {
+        let mut bottom = BottomPanel::new();
+        assert!(bottom.shown_terminals().is_empty());
+        bottom.git = Some(77);
+        // Problems shown: no terminal; the Git output: its view (and so the keyboard goes to it).
+        assert!(bottom.shown_terminals().is_empty());
+        bottom.view = View::Git;
+        assert_eq!(bottom.shown_terminals(), [77]);
+        assert!(bottom.tabs.tabs.is_empty());
+        bottom.tabs.add(5, false);
+        assert_eq!(bottom.shown_terminals(), [77]);
+        bottom.view = View::Terminals;
+        assert_eq!(bottom.shown_terminals(), [5]);
+    }
+
+    struct GitShot {
+        view: TerminalView,
+        fonts: Option<crate::fonts::GridFonts>,
+    }
+
+    /// The Git output in the panel: its tab current, the commands and what they said, and a failure.
+    #[test]
+    fn the_git_output_in_the_panel() {
+        use egui_kittest::Harness;
+        let mut results = egui_kittest::SnapshotResults::new();
+        for (theme, chrome, _) in crate::style::tests::themes() {
+            for (name, width) in [("wide", 640.0), ("narrow", 300.0)] {
+                let t = term::Terminal::output(term::Size { cols: 80, rows: 24, cell_w: 8, cell_h: 16 }, term::Palette::default(), 1000, None);
+                t.feed(b"\x1b[?25l");
+                for r in some_git_output() {
+                    t.feed(r.transcript().as_bytes());
+                }
+                let state = GitShot { view: TerminalView::new(t), fonts: None };
+                let mut tabs = some_tabs();
+                tabs.iter_mut().for_each(|t| t.current = false);
+                let mut harness = Harness::builder()
+                    .with_size(Vec2::new(width, 260.0))
+                    .with_pixels_per_point(2.0)
+                    .with_accessibility_check(false)
+                    .wgpu()
+                    .with_context_setup(crate::scm_view::tests::system_font)
+                    .build_ui_state(
+                        move |ui, state: &mut GitShot| {
+                            let fonts = state.fonts.get_or_insert_with(|| crate::fonts::install(ui.ctx(), &crate::fonts::FontSpec::default_with_size(13.0), None, None, None, None));
+                            let screen = ui.ctx().content_rect();
+                            ui.painter().rect_filled(screen, 0.0, chrome.panel);
+                            let strip = Rect::from_min_size(screen.min, Vec2::new(screen.width(), 24.0));
+                            let mut m = model(&tabs, false, false);
+                            m.git_current = true;
+                            paint_strip(ui.painter(), strip, &m, &chrome, &FontId::proportional(12.0), &mut IconTextures::default());
+                            let content = Rect::from_min_max(Pos2::new(screen.min.x, strip.max.y), screen.max);
+                            let mut child = ui.new_child(egui::UiBuilder::new().max_rect(content));
+                            let look = Look {
+                                fonts,
+                                linespace: 0.0,
+                                fg: chrome.fg,
+                                bg: chrome.panel,
+                                accent: chrome.accent,
+                                ansi: [None; 16],
+                                option_as_meta: true,
+                                blink: false,
+                                copy_on_select: false,
+                                middle_click_paste: false,
+                            };
+                            state.view.show(&mut child, &look, true);
+                        },
+                        state,
+                    );
+                harness.run();
+                harness.snapshot(format!("bottom_git_{name}_{theme}"));
+                results.extend_harness(&mut harness);
+            }
+        }
+        results.unwrap();
     }
 }

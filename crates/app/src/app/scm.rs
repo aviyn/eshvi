@@ -181,6 +181,7 @@ impl VimApp {
             Action::Focus => self.set_focus(Focus::Side),
             Action::FocusEditor => self.set_focus(Focus::Editor),
             Action::Refresh => self.git_force = true,
+            Action::ShowGitOutput => self.panel_command(ctx, "git_output", &["show".into()]),
             Action::CommitFiles(commit) => {
                 if let Some(top) = self.scm.top() {
                     self.git_ops.files(&top, commit);
@@ -217,7 +218,10 @@ impl VimApp {
     pub(super) fn poll_git_ops(&mut self, ctx: &egui::Context) {
         for done in self.git_ops.poll() {
             match done {
-                OpDone::Ran(op, result) => {
+                OpDone::Ran(op, result, ran) => {
+                    if self.panel_enabled {
+                        self.add_git_output(ctx, &ran);
+                    }
                     // The diff view reads its files again, or forgets what it was doing.
                     if let Some(d) = &mut self.diff {
                         if result.is_ok() {
@@ -237,7 +241,7 @@ impl VimApp {
                                 self.run_git_op(more);
                             }
                         }
-                        Err(why) => self.editor.push_message("emsg", &failure_message(&op, &why)),
+                        Err(why) => self.editor.push_message("emsg", &failure_message(&op, &why, self.panel_enabled)),
                     }
                     self.git_force = true;
                     if op.touches_files() {
@@ -273,8 +277,21 @@ const WHY_LINES: usize = 6;
 /// What to tell the user when `op` fails with `why` (what git said), short
 /// as VS Code's: a conflict and a rejected push in a sentence, anything else
 /// as "<What> failed:" and git's words, without its `hint:` lines, cut at
-/// `WHY_LINES` (a hook's output is as welcome as git's).
-fn failure_message(op: &Op, why: &str) -> String {
+/// `WHY_LINES` (a hook's output is as welcome as git's). With the bottom panel
+/// (`git_output`) it ends by saying where all of it is.
+fn failure_message(op: &Op, why: &str, git_output: bool) -> String {
+    let message = failure_sentence(op, why);
+    if git_output {
+        format!("{message}\n{SEE_OUTPUT}")
+    } else {
+        message
+    }
+}
+
+/// The last line of a failure's message.
+const SEE_OUTPUT: &str = "See the Git output (⇧⌘U).";
+
+fn failure_sentence(op: &Op, why: &str) -> String {
     let conflicts = why.lines().filter(|l| l.contains("CONFLICT")).count();
     if conflicts > 0 {
         let files = if conflicts == 1 { "1 file".to_owned() } else { format!("{conflicts} files") };
@@ -337,41 +354,50 @@ mod tests {
     fn git_errors_are_short() {
         // A conflict is a sentence, with the number of files, and no Abort.
         let merge = "Auto-merging a.txt\nCONFLICT (content): Merge conflict in a.txt\nAuto-merging b.txt\nCONFLICT (content): Merge conflict in b.txt\nAutomatic merge failed; fix conflicts and then commit the result.";
-        assert_eq!(failure_message(&Op::Pull, merge), "Merge conflicts in 2 files. Resolve them, stage them and commit.");
+        assert_eq!(failure_sentence(&Op::Pull, merge), "Merge conflicts in 2 files. Resolve them, stage them and commit.");
         assert_eq!(
-            failure_message(&Op::Merge("x".into()), "CONFLICT (add/add): Merge conflict in a.txt"),
+            failure_sentence(&Op::Merge("x".into()), "CONFLICT (add/add): Merge conflict in a.txt"),
             "Merge conflicts in 1 file. Resolve them, stage them and commit."
         );
-        assert!(!failure_message(&Op::Pull, merge).contains("Abort"));
+        assert!(!failure_sentence(&Op::Pull, merge).contains("Abort"));
         // A rejected push, however git words it.
         let rejected = "To /tmp/remote.git\n ! [rejected]        main -> main (fetch first)\nerror: failed to push some refs\nhint: Updates were rejected because the remote contains work\nhint: that you do not have locally.";
         let sentence = "Push rejected: the remote has commits you don't have. Pull or Sync first.";
-        assert_eq!(failure_message(&Op::Push, rejected), sentence);
-        assert_eq!(failure_message(&Op::Sync, "! [rejected] main -> main (non-fast-forward)"), sentence);
-        assert_eq!(failure_message(&Op::Push, "Updates were rejected: fetch first"), sentence);
+        assert_eq!(failure_sentence(&Op::Push, rejected), sentence);
+        assert_eq!(failure_sentence(&Op::Sync, "! [rejected] main -> main (non-fast-forward)"), sentence);
+        assert_eq!(failure_sentence(&Op::Push, "Updates were rejected: fetch first"), sentence);
         // The rest: git's words without the hints.
         let other = "fatal: unable to access 'https://x/': Could not resolve host\nhint: check your network";
-        assert_eq!(failure_message(&Op::Fetch, other), "Fetch failed:\nfatal: unable to access 'https://x/': Could not resolve host");
+        assert_eq!(failure_sentence(&Op::Fetch, other), "Fetch failed:\nfatal: unable to access 'https://x/': Could not resolve host");
         // A hook's output is kept, up to six lines, then an ellipsis.
         let hook = (1..=9).map(|i| format!("lint error {i}")).collect::<Vec<_>>().join("\n");
-        let message = failure_message(&Op::Push, &hook);
+        let message = failure_sentence(&Op::Push, &hook);
         assert_eq!(message.lines().count(), 1 + 6 + 1);
         assert!(message.starts_with("Push failed:\nlint error 1\n") && message.ends_with("lint error 6\n…"));
         let six = (1..=6).map(|i| format!("l{i}")).collect::<Vec<_>>().join("\n");
-        assert!(!failure_message(&Op::Push, &six).ends_with('…'));
+        assert!(!failure_sentence(&Op::Push, &six).ends_with('…'));
         // Nothing but hints: still says what failed.
-        assert_eq!(failure_message(&Op::Pull, "hint: nope"), "Pull failed:");
+        assert_eq!(failure_sentence(&Op::Pull, "hint: nope"), "Pull failed:");
+    }
+
+    #[test]
+    fn a_failure_says_where_all_of_git_s_output_is() {
+        assert_eq!(failure_message(&Op::Push, "fatal: no", true), "Push failed:\nfatal: no\nSee the Git output (⇧⌘U).");
+        let rejected = failure_message(&Op::Push, "! [rejected] main -> main (fetch first)", true);
+        assert!(rejected.starts_with("Push rejected:") && rejected.ends_with("\nSee the Git output (⇧⌘U)."));
+        // Without the bottom panel there is no such place to point to.
+        assert_eq!(failure_message(&Op::Push, "fatal: no", false), "Push failed:\nfatal: no");
     }
 
     #[test]
     fn a_failed_operation_says_what_failed_and_what_git_said() {
-        let push = failure_message(&Op::Push, "fatal: Authentication failed");
+        let push = failure_sentence(&Op::Push, "fatal: Authentication failed");
         assert_eq!(push, "Push failed:\nfatal: Authentication failed");
         let commit = Op::Commit { message: "x".into(), amend: false, stage_all: false, then: After::Sync };
-        assert!(failure_message(&commit, "no").starts_with("Commit failed:"));
+        assert!(failure_sentence(&commit, "no").starts_with("Commit failed:"));
         // (Its push or sync is an operation of its own, and says so.)
-        assert_eq!(failure_message(&Op::Sync, "no"), "Sync failed:\nno");
-        assert_eq!(failure_message(&Op::Checkout("a".into()), "no"), "Checkout failed:\nno");
+        assert_eq!(failure_sentence(&Op::Sync, "no"), "Sync failed:\nno");
+        assert_eq!(failure_sentence(&Op::Checkout("a".into()), "no"), "Checkout failed:\nno");
         // The ones that touch files make Neovim's buffers read them again.
         assert!(Op::Pull.touches_files() && Op::Checkout("a".into()).touches_files());
         assert!(!Op::Push.touches_files() && !Op::StageAll.touches_files());

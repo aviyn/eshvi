@@ -101,7 +101,7 @@ impl VimApp {
                     r.x_range(),
                     r.min.y + w.margins.top as f32 * m.height..=r.max.y - w.margins.bottom as f32 * m.height,
                 );
-                Some(crate::scrollbar::Target { win: w.win, area, top, bottom, lines, fg, bg })
+                Some(crate::scrollbar::Target { bar: crate::scrollbar::Bar::Win(w.win), area, top, bottom, lines, fg, bg })
             })
             .collect();
         // Popups (plugins' floats: a completion menu, its documentation, a
@@ -128,7 +128,7 @@ impl VimApp {
                         area = area.shrink2(Vec2::new(m.width, m.height));
                     }
                     Some(crate::scrollbar::Target {
-                        win: w.win,
+                        bar: crate::scrollbar::Bar::Win(w.win),
                         area,
                         top: v.topline,
                         bottom: v.botline,
@@ -138,6 +138,8 @@ impl VimApp {
                     })
                 }),
         );
+        // The terminals', as the panels drew them this frame.
+        targets.append(&mut self.term_bars);
         if let Some(d) = &self.diff {
             let chrome = crate::style::Chrome::from_editor(&self.editor);
             targets.extend(d.scrollbar_target(chrome.fg, chrome.bg));

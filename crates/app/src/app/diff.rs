@@ -9,7 +9,7 @@ impl VimApp {
     /// Open the view with `req` over the editor, with the keyboard.
     pub(super) fn open_diff(&mut self, ctx: &egui::Context, req: Request) {
         let wake = ctx.clone();
-        let opts = Options { layout: self.diff_layout, context: self.config.diff.context, max_lines: diff_view::model::MAX_LINES };
+        let opts = Options { layout: self.diff_layout, context: self.config.diff.context, max_lines: diff_view::model::MAX_LINES, split: self.diff_split };
         self.diff = Some(DiffView::new(req, opts, move || wake.request_repaint()));
         self.diff_buffer = self.active_file.clone();
         self.set_focus(Focus::Diff);
@@ -17,10 +17,12 @@ impl VimApp {
         ctx.request_repaint();
     }
 
-    /// Close it; the keyboard goes back to Neovim. The layout chosen stays for the session.
+    /// Close it; the keyboard goes back to Neovim. The layout chosen, and where the
+    /// sides divide, stay for the session.
     pub(super) fn close_diff(&mut self) {
         if let Some(d) = self.diff.take() {
             self.diff_layout = d.layout;
+            self.diff_split = d.split;
         }
         self.diff_rect = None;
         self.diff_pressed = false;
@@ -31,13 +33,15 @@ impl VimApp {
         }
     }
 
-    /// The agents' changes as a view's files: each against the snapshot, as it is now.
-    pub(super) fn changes_request(&self, focus: Option<&str>) -> Option<Request> {
+    /// The agents' changes as a view's files: each against the snapshot, as it is now
+    /// (`only`: that file alone).
+    pub(super) fn changes_request(&self, only: Option<&str>) -> Option<Request> {
         let s = self.changes.current()?;
         let files: Vec<FileSpec> = self
             .changes
             .files
             .iter()
+            .filter(|f| only.is_none_or(|p| f.path == p))
             .map(|f| FileSpec {
                 path: f.path.clone(),
                 old_path: None,
@@ -53,7 +57,7 @@ impl VimApp {
         (!files.is_empty()).then(|| Request {
             top: s.top.clone(),
             compared: "before the agents → now".into(),
-            focus: focus.map(str::to_owned),
+            focus: None,
             files: Files::List(files),
             mode: Mode::Agents,
         })
@@ -74,12 +78,6 @@ impl VimApp {
         match ev {
             // The text of the key press that sent `:` to the command line (it was sent already).
             Event::Text(t) if t == ":" && self.diff_colon.take().is_some_and(|at| at.elapsed() < std::time::Duration::from_millis(200)) => true,
-            // The scroll bar over its rows takes the press (and the drag after it).
-            Event::PointerButton { pos, pressed: true, button: egui::PointerButton::Primary, .. }
-                if self.over_diff(*pos) && !self.over_popup(ctx, *pos) && self.scrollbar_press(*pos) =>
-            {
-                true
-            }
             Event::PointerButton { pos, pressed: true, .. } if self.over_diff(*pos) && !self.over_popup(ctx, *pos) => {
                 self.set_focus(Focus::Diff);
                 self.diff_pressed = true;

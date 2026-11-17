@@ -212,7 +212,7 @@ pub struct PanelSession {
     pub shown: bool,
     /// Its height in points.
     pub height: f32,
-    /// "problems" or "terminal" (terminals aren't restored: it comes back as Problems).
+    /// "problems", "git" or "terminal" (terminals aren't restored: it comes back as Problems).
     pub view: String,
 }
 

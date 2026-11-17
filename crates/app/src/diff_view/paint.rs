@@ -11,7 +11,7 @@ use grid::Editor;
 
 use super::model::{self, Kind, Row, SplitRow};
 use super::source::{Span, Status};
-use super::{Action, Cursor, DiffView, Do, Geometry, Layout, Rows};
+use super::{Action, Cursor, DiffView, Do, Geometry, Layout, Rows, SPLIT_MIN};
 use crate::decorations::DecoColors;
 use crate::popup::mix;
 use crate::renderer::rgb;
@@ -119,6 +119,33 @@ fn digits(n: usize) -> usize {
     n.max(1).to_string().len()
 }
 
+/// The wheel's movement this frame, in points: a trackpad's as it is, a mouse wheel's notch
+/// three rows, a page the view's height; Shift turns a mouse wheel sideways.
+fn wheel_delta(ui: &egui::Ui, row_h: f32, page: f32) -> Vec2 {
+    ui.input(|i| {
+        i.events
+            .iter()
+            .filter_map(|e| match e {
+                egui::Event::MouseWheel { unit, delta, modifiers, .. } => {
+                    let d = match unit {
+                        egui::MouseWheelUnit::Point => *delta,
+                        egui::MouseWheelUnit::Line => *delta * row_h * WHEEL_NOTCH_ROWS,
+                        egui::MouseWheelUnit::Page => *delta * page,
+                    };
+                    Some(if modifiers.shift && d.x == 0.0 { Vec2::new(d.y, 0.0) } else { d })
+                }
+                _ => None,
+            })
+            .fold(Vec2::ZERO, |a, b| a + b)
+    })
+}
+
+/// Rows a notch of a mouse wheel scrolls (as in the editor).
+const WHEEL_NOTCH_ROWS: f32 = 3.0;
+
+/// How near the divider between the sides the pointer grabs it, in points.
+const DIVIDER_GRAB: f32 = 4.0;
+
 impl DiffView {
     /// Draw the view in `rect` and take the pointer. `focused`: the view has the keyboard.
     pub fn show(&mut self, ui: &mut egui::Ui, rect: Rect, look: &Look, focused: bool) -> Vec<Action> {
@@ -141,12 +168,17 @@ impl DiffView {
         // Enter, ⇧Enter and Esc in the field, before the field takes them.
         self.find_keys(ui.ctx());
 
-        // The pointer over the rows scrolls them (and, sideways, the code).
+        // The pointer over the rows scrolls them (and, sideways, the code), when nothing is on
+        // top. From the wheel's own events, as the terminals do: egui's smoothed delta loses a
+        // trackpad scroll whose start and end come in one frame (a slow one, a long file's).
         let resp = ui.interact(body, Id::unique("eshvi-diff-body"), Sense::click_and_drag());
-        if resp.hovered() {
-            let d = ui.input(|i| i.smooth_scroll_delta);
-            self.scroll_by(-d.y);
-            self.scroll_x = (self.scroll_x - d.x).max(0.0);
+        let wheel_here = self.ptr.is_some_and(|p| body.contains(p) && ui.ctx().layer_id_at(p).is_none_or(|l| l == ui.layer_id()));
+        if wheel_here {
+            let d = wheel_delta(ui, self.geom.row_h, body.height());
+            if d != Vec2::ZERO {
+                self.scroll_by(-d.y);
+                self.scroll_x = (self.scroll_x - d.x).max(0.0);
+            }
         }
         if self.pin.is_none() {
             self.scroll = self.scroll.clamp(0.0, self.max_scroll());
@@ -299,8 +331,56 @@ impl DiffView {
         p.galley(Pos2::new(x, strip.center().y - g.size().y / 2.0), g, color);
     }
 
+    /// Side by side, the left side's width in a row `width` wide (the divider follows it).
+    pub(super) fn split_left(&self, width: f32) -> f32 {
+        ((width - style::HAIRLINE) * self.split).floor()
+    }
+
+    /// Side by side, the divider between the sides: the pointer on it (and not on a
+    /// header or a button) drags it; a double click puts it back in the middle.
+    /// Returns whether it has the pointer.
+    fn divider(&mut self, ui: &egui::Ui, resp: &egui::Response, body: Rect, hits: &Hits) -> bool {
+        if self.layout != Layout::Split {
+            self.split_drag = false;
+            return false;
+        }
+        let (pressed, double, down, pos, origin) = ui.input(|i| {
+            let p = &i.pointer;
+            (p.primary_pressed(), p.button_double_clicked(egui::PointerButton::Primary), p.primary_down(), p.latest_pos(), p.press_origin())
+        });
+        let Some(pos) = pos else { return self.split_drag };
+        if self.split_drag {
+            if down {
+                self.split = ((pos.x - body.min.x) / body.width().max(1.0)).clamp(SPLIT_MIN, 1.0 - SPLIT_MIN);
+                ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
+            } else {
+                // (A double click is told on its release.)
+                self.split_drag = false;
+                if double {
+                    self.split = 0.5;
+                }
+            }
+            return true;
+        }
+        let x = body.min.x + self.split_left(body.width()) + style::HAIRLINE / 2.0;
+        // (A press is where it was made: the pointer may have moved on in the same frame.)
+        let at = if pressed { origin.unwrap_or(pos) } else { pos };
+        let on = resp.hovered() && (at.x - x).abs() <= DIVIDER_GRAB && hits.at(at).is_none() && !self.bar_drag;
+        if !on {
+            return false;
+        }
+        ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
+        if pressed {
+            self.split_drag = true;
+        }
+        pressed
+    }
+
     /// Presses on the rows: the cursor and selection, headers, folds.
     fn pointer(&mut self, ui: &egui::Ui, resp: &egui::Response, body: Rect, hits: &Hits, actions: &mut Vec<Action>) {
+        if self.divider(ui, resp, body, hits) {
+            return;
+        }
         let (pressed, down, pos, shift) =
             ui.input(|i| (i.pointer.primary_pressed(), i.pointer.primary_down(), i.pointer.interact_pos(), i.modifiers.shift));
         let Some(pos) = pos else { return };
@@ -630,7 +710,7 @@ impl DiffView {
             ((lo / row_h) as usize, ((hi / row_h).ceil() as usize).min(rows.len()))
         };
         let (gw, sign_w) = self.gutter(i);
-        let half = ((width - style::HAIRLINE) / 2.0).floor();
+        let half = self.split_left(width);
         // The changes the cursor or the pointer is on show their buttons on their first row.
         let hot = self.hot_runs(i, pointer_row);
         for r in r0..r1 {
@@ -647,11 +727,11 @@ impl DiffView {
                             let (text, spans, words) = match l.kind {
                                 Kind::Removed => {
                                     let o = l.old.unwrap_or(0);
-                                    (&diff.old[o], loaded.colors.as_ref().and_then(|c| c.old.get(o)), &diff.old_words[o])
+                                    (&diff.old[o], loaded.colors.as_ref().and_then(|c| c.old.get(o)).and_then(Option::as_ref), &diff.old_words[o])
                                 }
                                 _ => {
                                     let n = l.new.unwrap_or(0);
-                                    (&diff.new[n], loaded.colors.as_ref().and_then(|c| c.new.get(n)), &diff.new_words[n])
+                                    (&diff.new[n], loaded.colors.as_ref().and_then(|c| c.new.get(n)).and_then(Option::as_ref), &diff.new_words[n])
                                 }
                             };
                             if let Some(bg) = line_bg {
@@ -686,9 +766,9 @@ impl DiffView {
                             self.paint_highlight(p, look, rect, selected, self.cursor == here, line_bg);
                             let Some(kind) = kind else { continue };
                             let (text, spans, words, word_bg) = if is_new {
-                                (&diff.new[line], loaded.colors.as_ref().and_then(|c| c.new.get(line)), &diff.new_words[line], kind_colors(look, kind).1)
+                                (&diff.new[line], loaded.colors.as_ref().and_then(|c| c.new.get(line)).and_then(Option::as_ref), &diff.new_words[line], kind_colors(look, kind).1)
                             } else {
-                                (&diff.old[line], loaded.colors.as_ref().and_then(|c| c.old.get(line)), &diff.old_words[line], kind_colors(look, kind).1)
+                                (&diff.old[line], loaded.colors.as_ref().and_then(|c| c.old.get(line)).and_then(Option::as_ref), &diff.old_words[line], kind_colors(look, kind).1)
                             };
                             number(p, look, Rect::from_min_size(rect.min, Vec2::new(gw, row_h)), Some(line + 1), c.text(false));
                             let sign_x = rect.min.x + gw;

@@ -30,12 +30,26 @@ use alacritty_terminal::tty::{self, Shell};
 
 pub use crate::core::{CursorDraw, Dims, Snapshot, Span, ViKey, ViOutcome};
 pub use crate::palette::Palette;
+
+/// Where a terminal's view is in its scrollback.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ScrollPos {
+    /// Lines scrolled back from the bottom (0: at the bottom).
+    pub offset: usize,
+    /// Lines of scrollback there are.
+    pub history: usize,
+    /// Lines on the screen.
+    pub rows: usize,
+    /// The alternate screen (a full-screen program) has no scrollback of its own.
+    pub alt_screen: bool,
+}
 pub use alacritty_terminal::index::{Direction, Point, Side};
 pub use alacritty_terminal::grid::Scroll;
 pub use alacritty_terminal::selection::SelectionType;
 pub use alacritty_terminal::term::color::Colors;
 pub use alacritty_terminal::term::cell::{Cell, Flags};
 pub use alacritty_terminal::term::TermMode;
+use alacritty_terminal::vte::ansi::Processor;
 pub use alacritty_terminal::vte::ansi::{Color, CursorShape, NamedColor, Rgb};
 
 use crate::core::{Search, ViState};
@@ -266,15 +280,20 @@ impl Proxy {
     }
 }
 
-/// One terminal: a process on a PTY and what it has drawn.
+/// One terminal: a process on a PTY and what it has drawn, or (`Terminal::output`)
+/// only what it was `feed`.
 pub struct Terminal {
     term: Arc<FairMutex<Term<Proxy>>>,
     shared: Arc<Shared>,
-    sender: EventLoopSender,
+    /// How the loop is told to resize and end; none for an output terminal.
+    sender: Option<EventLoopSender>,
     events: Mutex<Receiver<Event>>,
+    /// The process's id (0 for an output terminal).
     pid: u32,
     /// A duplicate of the PTY's master side, for the foreground process.
-    master: OwnedFd,
+    master: Option<OwnedFd>,
+    /// What `feed` hasn't finished reading: an escape sequence cut in two.
+    parser: Mutex<Processor>,
     cwd: Option<PathBuf>,
     size: Mutex<Size>,
     search: Mutex<Search>,
@@ -356,10 +375,11 @@ impl Terminal {
         Ok(Terminal {
             term,
             shared,
-            sender,
+            sender: Some(sender),
             events: Mutex::new(rx),
             pid,
-            master,
+            master: Some(master),
+            parser: Mutex::new(Processor::default()),
             cwd: opts.cwd,
             size: Mutex::new(size),
             search: Mutex::new(Search::default()),
@@ -368,7 +388,59 @@ impl Terminal {
         })
     }
 
-    /// The process's id.
+    /// A terminal with no process: it shows what `feed` is given, with its
+    /// scrollback, selection, search and Vi mode as any other. Nothing typed
+    /// or pasted goes anywhere, and it never ends.
+    pub fn output(size: Size, palette: Palette, scrollback: usize, wake: Option<Wake>) -> Terminal {
+        let shared = Arc::new(Shared {
+            palette: Mutex::new(palette),
+            size: Mutex::new(size.window()),
+            title: Mutex::new(None),
+            exited: AtomicBool::new(false),
+            exit: Mutex::new(None),
+            bells: AtomicU32::new(0),
+            output: AtomicU64::new(0),
+            sender: OnceLock::new(),
+            wake,
+        });
+        let (tx, rx) = channel();
+        let proxy = Proxy { shared: shared.clone(), events: tx };
+        let config = Config { scrolling_history: scrollback, ..Config::default() };
+        let term = Arc::new(FairMutex::new(Term::new(config, &Dims { cols: size.cols as usize, rows: size.rows as usize }, proxy)));
+        Terminal {
+            term,
+            shared,
+            sender: None,
+            events: Mutex::new(rx),
+            pid: 0,
+            master: None,
+            parser: Mutex::new(Processor::default()),
+            cwd: None,
+            size: Mutex::new(size),
+            search: Mutex::new(Search::default()),
+            vi: Mutex::new(ViState::default()),
+            keys: Mutex::new(KeyOptions::default()),
+        }
+    }
+
+    /// Show `bytes` as a program's output would be shown: escape sequences
+    /// (colors, bold) are read, and a line ends with "\r\n" (a bare "\n" only
+    /// moves down, as on any terminal). A no-op on a terminal with a process.
+    pub fn feed(&self, bytes: &[u8]) {
+        if self.sender.is_some() {
+            return;
+        }
+        self.parser.lock().unwrap().advance(&mut *self.term.lock(), bytes);
+        self.shared.output.fetch_add(1, Ordering::Relaxed);
+        self.shared.wake();
+    }
+
+    /// Whether anything typed reaches a process (not for an output terminal).
+    pub fn takes_input(&self) -> bool {
+        self.sender.is_some()
+    }
+
+    /// The process's id (0 when there is none).
     pub fn pid(&self) -> u32 {
         self.pid
     }
@@ -414,7 +486,7 @@ impl Terminal {
         if !self.is_running() {
             return None;
         }
-        let pgid = proc::foreground_pgid(self.master.as_raw_fd() as RawFd)?;
+        let pgid = proc::foreground_pgid(self.master.as_ref()?.as_raw_fd() as RawFd)?;
         proc::process_name(pgid)
     }
 
@@ -422,14 +494,15 @@ impl Terminal {
     /// one the terminal was started in.
     pub fn current_dir(&self) -> Option<PathBuf> {
         use std::os::fd::AsRawFd;
-        let foreground = proc::foreground_pgid(self.master.as_raw_fd() as RawFd);
+        let Some(master) = &self.master else { return self.cwd.clone() };
+        let foreground = proc::foreground_pgid(master.as_raw_fd() as RawFd);
         foreground.and_then(proc::process_cwd).or_else(|| proc::process_cwd(self.pid)).or_else(|| self.cwd.clone())
     }
 
     /// Whether the shell itself is in the foreground, as at its prompt.
     pub fn at_shell_prompt(&self) -> bool {
         use std::os::fd::AsRawFd;
-        proc::foreground_pgid(self.master.as_raw_fd() as RawFd) == Some(self.pid)
+        self.master.as_ref().is_some_and(|m| proc::foreground_pgid(m.as_raw_fd() as RawFd) == Some(self.pid))
     }
 
     /// What happened since the last call.
@@ -548,14 +621,34 @@ impl Terminal {
         *current = size;
         *self.shared.size.lock().unwrap() = size.window();
         self.term.lock().resize(Dims { cols: size.cols as usize, rows: size.rows as usize });
-        if self.is_running() {
-            let _ = self.sender.send(Msg::Resize(size.window()));
+        if let Some(sender) = self.sender.as_ref().filter(|_| self.is_running()) {
+            let _ = sender.send(Msg::Resize(size.window()));
         }
     }
 
     /// Scroll the view through the scrollback (`Delta`: positive is up).
     pub fn scroll(&self, scroll: Scroll) {
         self.term.lock().scroll_display(scroll);
+    }
+
+    /// Where the view is in the scrollback, without a snapshot's copy of the screen.
+    pub fn scroll_position(&self) -> ScrollPos {
+        use alacritty_terminal::grid::Dimensions;
+        let term = self.term.lock();
+        ScrollPos {
+            offset: term.grid().display_offset(),
+            history: term.history_size(),
+            rows: term.screen_lines(),
+            alt_screen: term.mode().contains(TermMode::ALT_SCREEN),
+        }
+    }
+
+    /// Scroll the view to `offset` lines back from the bottom (as far as there
+    /// are lines): what dragging a scroll bar does.
+    pub fn scroll_to(&self, offset: usize) {
+        let mut term = self.term.lock();
+        let now = term.grid().display_offset() as i32;
+        term.scroll_display(Scroll::Delta(offset as i32 - now));
     }
 
     /// Lines of scrollback.
@@ -700,7 +793,9 @@ impl Terminal {
 impl Drop for Terminal {
     fn drop(&mut self) {
         // The loop ends and drops the PTY, which hangs up the process.
-        let _ = self.sender.send(Msg::Shutdown);
+        if let Some(sender) = &self.sender {
+            let _ = sender.send(Msg::Shutdown);
+        }
     }
 }
 
@@ -858,6 +953,91 @@ mod tests {
         t.wheel(-2, 0, 0, Mods::NONE);
         assert_eq!(t.snapshot().display_offset, 1);
         t.selection_text();
+    }
+
+    #[test]
+    fn the_scroll_position_is_read_and_set() {
+        let t = sh("for i in 1 2 3 4 5 6 7 8 9 10; do echo line$i; done; sleep 5", 20, 4);
+        wait_for("the output", || t.history_size() >= 6);
+        let at = t.scroll_position();
+        assert_eq!((at.offset, at.rows, at.alt_screen), (0, 4, false));
+        assert!(at.history >= 6);
+        t.scroll_to(3);
+        assert_eq!(t.scroll_position().offset, 3);
+        assert_eq!(t.snapshot().display_offset, 3);
+        t.scroll_to(1);
+        assert_eq!(t.scroll_position().offset, 1);
+        // Past the top: the top. Zero: the bottom.
+        t.scroll_to(10_000);
+        assert_eq!(t.scroll_position().offset, at.history);
+        t.scroll_to(0);
+        assert_eq!(t.scroll_position().offset, 0);
+    }
+
+    fn output_terminal(cols: u16, rows: u16) -> Terminal {
+        Terminal::output(size(cols, rows), Palette::default(), 100, None)
+    }
+
+    #[test]
+    fn an_output_terminal_shows_what_it_is_fed() {
+        let t = output_terminal(20, 4);
+        t.feed(b"one\r\ntwo\r\n");
+        t.feed(b"\x1b[1mbold\x1b[0m and \x1b[31mred\x1b[0m");
+        assert_eq!(screen(&t), ["one", "two", "bold and red"]);
+        let snap = t.snapshot();
+        let bold = &snap.row(2)[0];
+        assert!(bold.flags.contains(Flags::BOLD));
+        assert_eq!(t.text_between((0, 0), (0, 2)), "one");
+        // An escape sequence cut between two feeds is still read as one.
+        t.feed(b"\r\n\x1b[3");
+        t.feed(b"1mcut");
+        let snap = t.snapshot();
+        assert_eq!(snap.row(3)[0].c, 'c');
+        assert_ne!(snap.row(3)[0].fg, snap.row(2)[0].fg);
+    }
+
+    #[test]
+    fn an_output_terminal_keeps_a_scrollback_that_can_be_scrolled() {
+        let t = output_terminal(20, 4);
+        for i in 1..=10 {
+            t.feed(format!("line{i}\r\n").as_bytes());
+        }
+        let at = t.scroll_position();
+        assert_eq!((at.offset, at.rows, at.alt_screen), (0, 4, false));
+        assert!(at.history >= 7);
+        t.scroll_to(3);
+        assert_eq!(t.scroll_position().offset, 3);
+        t.scroll(Scroll::Bottom);
+        assert_eq!(t.scroll_position().offset, 0);
+    }
+
+    #[test]
+    fn an_output_terminal_has_no_process_and_takes_no_input() {
+        let t = output_terminal(20, 4);
+        assert_eq!(t.pid(), 0);
+        assert!(!t.takes_input() && sh("sleep 5", 20, 4).takes_input());
+        assert!(t.is_running() && t.exit_status().is_none());
+        assert_eq!((t.foreground_process(), t.current_dir(), t.at_shell_prompt()), (None, None, false));
+        t.write_text("typed");
+        t.paste("pasted");
+        t.resize(size(30, 6));
+        assert_eq!(t.snapshot().cols, 30);
+        assert!(screen(&t).is_empty());
+        // Selecting and searching work as in any terminal.
+        t.feed(b"find me");
+        assert!(t.search("find"));
+        t.select_all();
+        assert_eq!(t.selection_text().as_deref(), Some("find me"));
+        // A terminal with a process takes no feed.
+        let real = sh("sleep 5", 20, 4);
+        real.feed(b"not shown");
+        assert!(screen(&real).is_empty());
+    }
+
+    #[test]
+    fn the_alternate_screen_is_said_so() {
+        let t = sh("printf '\\033[?1049h'; sleep 5", 20, 4);
+        wait_for("the alternate screen", || t.scroll_position().alt_screen);
     }
 
     #[test]

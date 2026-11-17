@@ -60,11 +60,16 @@ pub struct Options {
     pub layout: Layout,
     pub context: usize,
     pub max_lines: usize,
+    /// Side by side, the left side's share of the width.
+    pub split: f32,
 }
+
+/// Side by side, the least share of the width either side keeps.
+pub const SPLIT_MIN: f32 = 0.15;
 
 impl Default for Options {
     fn default() -> Self {
-        Self { layout: Layout::Unified, context: 3, max_lines: model::MAX_LINES }
+        Self { layout: Layout::Unified, context: 3, max_lines: model::MAX_LINES, split: 0.5 }
     }
 }
 
@@ -130,11 +135,13 @@ pub struct Section {
     pub expanded: BTreeSet<usize>,
     /// The rows, for the layout and context they were made with.
     pub rows: Option<(Layout, usize, Rows)>,
+    /// Colors are asked for the lines a fold opened.
+    colors_asked: bool,
 }
 
 impl Section {
     fn new(spec: FileSpec) -> Self {
-        Self { spec, loaded: None, requested: false, serial: 0, stale: false, folded: false, expanded: BTreeSet::new(), rows: None }
+        Self { spec, loaded: None, requested: false, serial: 0, stale: false, folded: false, expanded: BTreeSet::new(), rows: None, colors_asked: false }
     }
 
     pub fn diff(&self) -> Option<&model::Diff> {
@@ -218,6 +225,10 @@ pub struct DiffView {
     /// What is compared ("HEAD → working tree").
     pub compared: String,
     pub layout: Layout,
+    /// Side by side, the left side's share of the width (the divider is dragged).
+    pub split: f32,
+    /// The divider is being dragged.
+    split_drag: bool,
     pub context: usize,
     max_lines: usize,
     pub sections: Vec<Section>,
@@ -271,6 +282,8 @@ impl DiffView {
             top: req.top.clone(),
             compared: req.compared,
             layout: opts.layout,
+            split: opts.split.clamp(SPLIT_MIN, 1.0 - SPLIT_MIN),
+            split_drag: false,
             context: opts.context,
             max_lines: opts.max_lines,
             sections: Vec::new(),
@@ -372,6 +385,7 @@ impl DiffView {
                 let Some(s) = self.sections.get_mut(index).filter(|s| s.serial == serial) else { return };
                 s.loaded = Some(loaded);
                 s.requested = false;
+                s.colors_asked = false;
                 s.rows = None;
                 // The folds the click opened belong to the old diff.
                 s.expanded.clear();
@@ -385,9 +399,15 @@ impl DiffView {
             Done::Colors { index, serial, colors } => {
                 // Only for the diff it was made from.
                 let Some(s) = self.sections.get_mut(index).filter(|s| s.serial == serial) else { return };
-                if let Some(l) = s.loaded.as_mut() {
-                    l.colors = colors;
+                s.colors_asked = false;
+                if let (Some(l), Some(colors)) = (s.loaded.as_mut(), colors) {
+                    match &mut l.colors {
+                        Some(have) => have.merge(colors),
+                        None => l.colors = Some(colors),
+                    }
                 }
+                // (A fold opened while they were made.)
+                self.color_shown(index);
             }
         }
     }
@@ -396,11 +416,13 @@ impl DiffView {
     /// context changed), and keep the cursor on a row there is.
     pub fn prepare(&mut self) {
         let (layout, context) = (self.layout, self.context);
-        for s in &mut self.sections {
+        let mut remade = Vec::new();
+        for (i, s) in self.sections.iter_mut().enumerate() {
             let fresh = matches!(&s.rows, Some((l, c, _)) if *l == layout && *c == context);
             if fresh {
                 continue;
             }
+            remade.push(i);
             s.rows = match &s.loaded {
                 Some(Loaded { body: Body::Text(d), .. }) => Some((
                     layout,
@@ -412,6 +434,10 @@ impl DiffView {
                 )),
                 _ => None,
             };
+        }
+        // Lines a fold or more context shows now are colored.
+        for i in remade {
+            self.color_shown(i);
         }
         if let Some(i) = self.pin.filter(|i| *i < self.sections.len()) {
             // The file stays at the top while those near it are read; then
@@ -474,6 +500,20 @@ impl DiffView {
         wake
     }
 
+    /// Ask for the colors of section `i`'s lines that are shown and not colored (only once
+    /// its first colors are in: those cover what it showed then).
+    fn color_shown(&mut self, i: usize) {
+        let (Some(coloring), Some(s)) = (&self.coloring, self.sections.get(i)) else { return };
+        let Some(Loaded { body: Body::Text(d), colors: Some(colors), .. }) = &s.loaded else { return };
+        if s.colors_asked || s.folded {
+            return;
+        }
+        let Some(shown) = colors.missing(&d.shown(self.context, &s.expanded)) else { return };
+        let job = Job::Colors { index: i, serial: s.serial, path: s.spec.path.clone(), old: d.old.clone(), new: d.new.clone(), coloring: coloring.clone(), shown };
+        self.sections[i].colors_asked = true;
+        self.worker.send(job, true);
+    }
+
     fn request(&mut self, i: usize, urgent: bool) {
         let s = &mut self.sections[i];
         if s.requested || (s.loaded.is_some() && !s.stale) {
@@ -484,7 +524,7 @@ impl DiffView {
         self.serial += 1;
         s.serial = self.serial;
         self.worker.send(
-            Job::Load { index: i, serial: s.serial, top: self.top.clone(), spec: s.spec.clone(), coloring: self.coloring.clone(), max_lines: self.max_lines },
+            Job::Load { index: i, serial: s.serial, top: self.top.clone(), spec: s.spec.clone(), coloring: self.coloring.clone(), max_lines: self.max_lines, context: self.context },
             urgent,
         );
     }
@@ -537,11 +577,11 @@ impl DiffView {
         self.scroll_by(y - self.scroll);
     }
 
-    /// What the scroll bar (`scrollbar::DIFF`) shows: all the sections' height,
+    /// What the scroll bar (`Bar::Diff`) shows: all the sections' height,
     /// in pixels, over the rows.
     pub fn scrollbar_target(&self, fg: egui::Color32, bg: egui::Color32) -> Option<crate::scrollbar::Target> {
         (!self.sections.is_empty()).then(|| crate::scrollbar::Target {
-            win: crate::scrollbar::DIFF,
+            bar: crate::scrollbar::Bar::Diff,
             area: self.body,
             top: self.scroll.round() as i64,
             bottom: (self.scroll + self.viewport_h).round() as i64,

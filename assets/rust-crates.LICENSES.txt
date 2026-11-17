@@ -1,4 +1,4 @@
-Made from Cargo.lock 537407f03ef854d4 by scripts/rust-notices.sh.
+Made from Cargo.lock 884b250e49e32491 by scripts/rust-notices.sh.
 
 The Rust crates built into Eshvi (eshvi and svtrace), grouped by the license
 Eshvi uses them under, with the text of each license. Each crate's source is

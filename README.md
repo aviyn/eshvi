@@ -126,6 +126,7 @@ Neovim's keys are all yours. Eshvi adds the Mac ones around them:
 | ⌘J | bottom panel |
 | ⌃\` | terminal |
 | ⇧⌘M | Problems |
+| ⇧⌘U | Git output |
 | ⌥⌘B | agent panel |
 | ⌃h ⌃j ⌃k ⌃l | move between windows and panels |
 | ⌘= / ⌘− | zoom |

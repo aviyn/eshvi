@@ -637,8 +637,11 @@ impl VimApp {
             let Some(view) = self.agents.views.get_mut(&id) else { return };
             let mut child = ui.new_child(egui::UiBuilder::new().max_rect(content));
             child.set_clip_rect(content.intersect(ui.clip_rect()));
+            view.bar_drag = self.scrollbars.dragging();
+            view.covered.clone_from(&self.popup_rects);
             let o = view.show(&mut child, &look, self.focus == Focus::Agent(id));
             let dir = view.link_dir();
+            self.term_bars.extend(view.scrollbar_target(&look));
             if o.pressed {
                 self.set_focus(Focus::Agent(id));
             }

@@ -1,6 +1,7 @@
 //! Keyboard and mouse input: what goes to Neovim and what the GUI takes.
 
 use super::*;
+use crate::scrollbar::Bar;
 
 /// Rows a mouse's wheel notch scrolls ('mousescroll''s default).
 const WHEEL_NOTCH_ROWS: f32 = 3.0;
@@ -17,28 +18,34 @@ fn wheel_step(pending: f32) -> (i64, f32) {
 }
 
 impl VimApp {
-    /// Scroll window `win` so line `top` (0-based) is first in view.
-    pub(super) fn scroll_window_to(&mut self, win: i64, top: i64) {
-        if win == crate::scrollbar::DIFF {
-            if let Some(d) = &mut self.diff {
-                d.scroll_to(top as f32);
+    /// Scroll what `bar` is on so that line `top` (0-based) is first in view.
+    pub(super) fn scroll_bar_to(&mut self, bar: Bar, top: i64) {
+        match bar {
+            Bar::Diff => {
+                if let Some(d) = &mut self.diff {
+                    d.scroll_to(top as f32);
+                }
             }
-            return;
+            Bar::Terminal(id) => {
+                let views = self.bottom.views.values_mut().chain(self.agents.views.values_mut());
+                if let Some(v) = views.into_iter().find(|v| v.id() == id) {
+                    v.scroll_to_line(top);
+                }
+            }
+            Bar::Win(win) if self.preview.win(win).is_some() => self.preview.scroll_to(win, top),
+            Bar::Win(win) => {
+                self.gui_scrolled = Some(Instant::now());
+                self.bridge.send(UiCommand::Command(format!("lua Eshvi.scroll_to({win}, {})", top + 1)));
+            }
         }
-        if self.preview.win(win).is_some() {
-            self.preview.scroll_to(win, top);
-            return;
-        }
-        self.gui_scrolled = Some(Instant::now());
-        self.bridge.send(UiCommand::Command(format!("lua Eshvi.scroll_to({win}, {})", top + 1)));
     }
 
     /// A primary press at `pos`: whether a scroll bar took it (it scrolls
-    /// its window, or the diff view, to where the thumb is grabbed).
+    /// what it is on to where the thumb is grabbed).
     pub(super) fn scrollbar_press(&mut self, pos: Pos2) -> bool {
         let (taken, scroll) = self.scrollbars.press(pos);
-        if let Some((win, top)) = scroll {
-            self.scroll_window_to(win, top);
+        if let Some((bar, top)) = scroll {
+            self.scroll_bar_to(bar, top);
         }
         taken
     }
@@ -101,11 +108,15 @@ impl VimApp {
         ((p.y / m.height).floor() as i64, (p.x / m.width).floor() as i64)
     }
 
+    /// An egui menu is open and on top at `pos`.
+    pub(super) fn over_menu(&self, ctx: &egui::Context, pos: Pos2) -> bool {
+        egui::Popup::is_any_open(ctx) && ctx.layer_id_at(pos).is_some_and(|l| l.order == egui::Order::Foreground)
+    }
+
     pub(super) fn over_popup(&self, ctx: &egui::Context, pos: Pos2) -> bool {
         // An egui menu open (the explorer's "⋯", the Outline's) is on top of what is
         // at `pos`, which may be the editor: a click on it is the menu's.
-        let over_menu = egui::Popup::is_any_open(ctx) && ctx.layer_id_at(pos).is_some_and(|l| l.order == egui::Order::Foreground);
-        over_menu
+        self.over_menu(ctx, pos)
             || self.popup_rects.iter().any(|r| r.contains(pos))
             || self.over_popup_menu(pos)
             || self.over_explorer(pos)
@@ -210,6 +221,26 @@ impl VimApp {
                     _ => {}
                 }
             }
+            // Scrollbars take presses on them, and the drags that follow (a drag
+            // in progress has the pointer, over whatever it passes).
+            match &ev {
+                Event::PointerButton { pos, pressed: true, button: PointerButton::Primary, .. } if !self.over_menu(ctx, *pos) => {
+                    if self.scrollbar_press(*pos) {
+                        continue;
+                    }
+                }
+                Event::PointerMoved(pos) if self.scrollbars.dragging() => {
+                    if let Some((bar, top)) = self.scrollbars.drag_to(*pos) {
+                        self.scroll_bar_to(bar, top);
+                    }
+                    continue;
+                }
+                Event::PointerButton { pressed: false, .. } if self.scrollbars.dragging() => {
+                    self.scrollbars.release();
+                    continue;
+                }
+                _ => {}
+            }
             // The bottom panel: its keys (while it has the keyboard) and the pointer
             // over it are its own, and ⌃h/j/k/l from it go to the next region.
             if self.panel_enabled {
@@ -254,25 +285,6 @@ impl VimApp {
             // not a key that would close it first.
             if dialog_open && crate::messages::is_copy(&ev) {
                 continue;
-            }
-            // Scrollbars take presses on them, and the drags that follow.
-            match &ev {
-                Event::PointerButton { pos, pressed: true, button: PointerButton::Primary, .. } => {
-                    if self.scrollbar_press(*pos) {
-                        continue;
-                    }
-                }
-                Event::PointerMoved(pos) if self.scrollbars.dragging() => {
-                    if let Some((win, top)) = self.scrollbars.drag_to(*pos) {
-                        self.scroll_window_to(win, top);
-                    }
-                    continue;
-                }
-                Event::PointerButton { pressed: false, .. } if self.scrollbars.dragging() => {
-                    self.scrollbars.release();
-                    continue;
-                }
-                _ => {}
             }
             // The Changes popup closes on a click elsewhere (the click
             // still counts) and on Esc (which doesn't reach Neovim).

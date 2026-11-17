@@ -9088,6 +9088,8 @@ fn the_panel_commands_only_notify_the_gui() {
         ("EshviTerminal height 9", panel("terminal", &["height", "9"])),
         ("EshviProblems show file", panel("problems", &["show", "file"])),
         ("EshviProblems filter two words", panel("problems", &["filter", "two words"])),
+        ("EshviGitOutput", panel("git_output", &[])),
+        ("EshviGitOutput hide", panel("git_output", &["hide"])),
     ] {
         bridge.send(UiCommand::Command(cmd.into()));
         assert_eq!(wait_gui(&bridge, &mut ed, |g| matches!(g, GuiEvent::Panel { .. })), Some(want), "{cmd}");

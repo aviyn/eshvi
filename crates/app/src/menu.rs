@@ -69,7 +69,7 @@ pub fn is_text_edit(action: &str) -> bool {
 /// Items that show or hide a panel: checkmark items, checked while it is
 /// shown.
 pub fn is_toggle(action: &str) -> bool {
-    matches!(action, "explorer" | "explorer_view" | "source_control" | "outline" | "panel" | "problems" | "terminal" | "agent" | "preview")
+    matches!(action, "explorer" | "explorer_view" | "source_control" | "outline" | "panel" | "problems" | "git_output" | "terminal" | "agent" | "preview")
 }
 
 /// What the GUI knows of an item of eshvi's: whether it can be chosen now

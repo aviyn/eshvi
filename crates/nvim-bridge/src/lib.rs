@@ -199,7 +199,7 @@ pub struct SpawnOptions {
     pub global_statusline: bool,
     /// Give normal file windows a filename winbar.
     pub winbar: bool,
-    /// Provide `:EshviTerminal`, `:EshviPanel` and `:EshviProblems` (the GUI's bottom panel;
+    /// Provide `:EshviTerminal`, `:EshviPanel`, `:EshviProblems` and `:EshviGitOutput` (the GUI's bottom panel;
     /// the commands only tell the GUI, and `gui_problems` carries the diagnostics).
     pub terminal_enabled: bool,
     /// Define eshvi's menus and report all menus (`gui_menu`) for a native

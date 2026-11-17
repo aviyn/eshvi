@@ -134,6 +134,8 @@ pub struct VimApp {
     smooth_scroll: bool,
     scroll_clock: Option<Instant>,
     scrollbars: crate::scrollbar::Scrollbars,
+    /// The scroll bars of the terminals drawn this frame, for `paint_scrollbars` to put on.
+    term_bars: Vec<crate::scrollbar::Target>,
     /// Sizes asked for external windows' grids (grid, cols, rows).
     external_resized: Vec<(u64, usize, usize)>,
     /// What the agents changed, and the Changes popup (and where it was).
@@ -144,6 +146,7 @@ pub struct VimApp {
     /// when it opened (another one closes it), and a press on it is held.
     diff: Option<crate::diff_view::DiffView>,
     diff_layout: crate::diff_view::Layout,
+    diff_split: f32,
     diff_rect: Option<Rect>,
     diff_buffer: Option<std::path::PathBuf>,
     diff_pressed: bool,
@@ -507,6 +510,7 @@ impl VimApp {
             changes_rect: None,
             diff: None,
             diff_layout: config.diff.layout,
+            diff_split: 0.5,
             diff_rect: None,
             diff_buffer: None,
             diff_pressed: false,
@@ -517,6 +521,7 @@ impl VimApp {
             smooth_scroll: config.smooth_scroll.unwrap_or(true),
             scroll_clock: None,
             scrollbars: crate::scrollbar::Scrollbars::new(config.scrollbar.unwrap_or_default()),
+            term_bars: Vec::new(),
             external_resized: Vec::new(),
             agent_font,
             terminal_font,
@@ -1232,7 +1237,7 @@ impl VimApp {
                             self.changes.popup = false;
                         }
                         Some(crate::changes_popup::Action::Diff(path)) if self.config.agent.diff == crate::config::DiffView::Native => {
-                            // The file's section first, with every file in the view.
+                            // That file alone ("Review All" shows them all).
                             if let Some(req) = self.changes_request(Some(&path)) {
                                 self.open_diff(&ctx, req);
                             }

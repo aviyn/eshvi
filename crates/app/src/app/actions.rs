@@ -216,7 +216,7 @@ impl VimApp {
                     let panel_item = self.panel_enabled
                         && matches!(
                             action.as_deref(),
-                            Some("panel" | "problems" | "terminal" | "new_terminal" | "next_terminal" | "prev_terminal" | "close_terminal")
+                            Some("panel" | "problems" | "git_output" | "terminal" | "new_terminal" | "next_terminal" | "prev_terminal" | "close_terminal")
                         );
                     if !panel_item && !matches!(action.as_deref(), Some("explorer" | "explorer_view" | "source_control" | "outline")) {
                         self.set_focus(Focus::Editor);
@@ -266,6 +266,7 @@ impl VimApp {
                 },
                 "panel" => ItemState::shown(self.bottom_shown()),
                 "problems" => ItemState::shown(self.bottom.shown && self.bottom.view == bottom_panel::View::Problems),
+                "git_output" => ItemState::shown(self.bottom.shown && self.bottom.view == bottom_panel::View::Git),
                 "terminal" => ItemState::shown(self.bottom.shown && self.bottom.view == bottom_panel::View::Terminals),
                 "agent" => ItemState::shown(self.agent_shown()),
                 "cut" => ItemState::enabled(selection),

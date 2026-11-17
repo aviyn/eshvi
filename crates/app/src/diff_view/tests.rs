@@ -1413,12 +1413,39 @@ fn the_colors_of_a_long_file_come_after_its_rows_and_are_applied() {
 }
 
 #[test]
+fn only_the_lines_shown_are_colored_and_a_folds_when_it_opens() {
+    let (mut v, _r) = long_file_view("partial-colors", 3000);
+    settle(&mut v);
+    let start = Instant::now();
+    let colored = |v: &DiffView, line: usize| v.sections[0].loaded.as_ref().and_then(|l| l.colors.as_ref()).is_some_and(|c| c.new[line].is_some());
+    while !colored(&v, 4) {
+        v.poll();
+        assert!(start.elapsed() < Duration::from_secs(20), "the colors didn't come");
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    // The change (line 5) and the lines around it; not those the fold hides.
+    assert!(colored(&v, 1) && colored(&v, 7));
+    assert!(!colored(&v, 2000) && !colored(&v, 2999));
+    // The fold opens: its lines are colored, those before kept.
+    let Some((.., Rows::Unified(rows))) = &v.sections[0].rows else { panic!("unified rows") };
+    let op = rows.iter().find_map(|r| if let Row::Fold { op, .. } = r { Some(*op) } else { None }).expect("a fold");
+    v.expand(0, op);
+    let start = Instant::now();
+    while !colored(&v, 2000) {
+        v.poll();
+        assert!(start.elapsed() < Duration::from_secs(20), "the fold's colors didn't come");
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    assert!(colored(&v, 4) && colored(&v, 2999));
+}
+
+#[test]
 fn colors_made_for_an_older_read_of_a_file_are_ignored() {
     let (mut v, _r) = long_file_view("stale-colors", 20);
     v.set_coloring(None);
     settle(&mut v);
     let serial = v.sections[0].serial;
-    let colors = |n| Some(source::Colors { old: vec![vec![]; n], new: vec![vec![]; n] });
+    let colors = |n| Some(source::Colors { old: vec![Some(vec![]); n], new: vec![Some(vec![]); n] });
     let have = |v: &DiffView| v.sections[0].loaded.as_ref().unwrap().colors.as_ref().map(|c| c.new.len());
     assert_eq!(have(&v), None);
     // The file was read again since: its older colors are not for this diff.
@@ -1439,6 +1466,83 @@ fn a_short_file_is_colored_when_its_rows_come() {
     let (mut v, _r) = long_file_view("short-colors", 40);
     settle(&mut v);
     assert!(v.sections[0].loaded.as_ref().unwrap().colors.is_some(), "no flash of uncolored text");
+}
+
+#[test]
+fn a_trackpad_scroll_that_comes_whole_in_one_frame_scrolls_the_view() {
+    let (mut h, _repo) = pic_harness("wheel-frame", "dark", Layout::Unified, Vec2::new(700.0, 300.0), |_| {});
+    let at = h.state().view.body.center();
+    h.input_mut().events.push(egui::Event::PointerMoved(at));
+    h.run_steps(4);
+    assert_eq!(h.state().view.scroll, 0.0);
+    // A slow frame (a long file being drawn) gets the gesture's start, moves and end at
+    // once; egui's smoothed delta is cleared by the end.
+    let wheel = |phase, y| egui::Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Point,
+        delta: Vec2::new(0.0, y),
+        phase,
+        source: egui::MouseWheelSource::Trackpad,
+        modifiers: Modifiers::NONE,
+    };
+    h.input_mut().events.extend([wheel(egui::TouchPhase::Start, 0.0), wheel(egui::TouchPhase::Move, -30.0), wheel(egui::TouchPhase::Move, -30.0), wheel(egui::TouchPhase::End, 0.0)]);
+    h.run_steps(4);
+    assert_eq!(h.state().view.scroll, 60.0);
+    // A mouse wheel's notch is three rows.
+    h.input_mut().events.push(egui::Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Line,
+        delta: Vec2::new(0.0, -1.0),
+        phase: egui::TouchPhase::Move,
+        source: egui::MouseWheelSource::Wheel,
+        modifiers: Modifiers::NONE,
+    });
+    h.run_steps(4);
+    assert_eq!(h.state().view.scroll, 60.0 + 3.0 * h.state().view.geom.row_h);
+}
+
+#[test]
+fn the_divider_between_the_sides_is_dragged_and_a_double_click_centers_it() {
+    let (mut h, _repo) = pic_harness("divider", "dark", Layout::Split, Vec2::new(700.0, 300.0), |_| {});
+    let body = h.state().view.body;
+    let y = body.min.y + h.state().view.geom.header_h + h.state().view.geom.row_h * 2.5;
+    let divider = body.min.x + h.state().view.split_left(body.width()) + 0.5;
+    let button = |pos, pressed| egui::Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed, modifiers: Modifiers::NONE };
+    let to = Pos2::new(body.min.x + body.width() * 0.3, y);
+    for ev in [egui::Event::PointerMoved(Pos2::new(divider, y)), button(Pos2::new(divider, y), true), egui::Event::PointerMoved(to), button(to, false)] {
+        h.input_mut().events.push(ev);
+        h.run_steps(2);
+    }
+    let split = h.state().view.split;
+    assert!((split - 0.3).abs() < 0.01, "{split}");
+    // The press was the divider's, not the start of a selection.
+    assert!(!h.state().view.dragging);
+    // Not past the least either side keeps.
+    let far = Pos2::new(body.min.x + 2.0, y);
+    let at = Pos2::new(body.min.x + h.state().view.split_left(body.width()) + 0.5, y);
+    for ev in [egui::Event::PointerMoved(at), button(at, true), egui::Event::PointerMoved(far), button(far, false)] {
+        h.input_mut().events.push(ev);
+        h.run_steps(2);
+    }
+    assert_eq!(h.state().view.split, SPLIT_MIN);
+    // A press and the pointer's moves after it in one frame: the press is on the divider.
+    let at = Pos2::new(body.min.x + h.state().view.split_left(body.width()) + 0.5, y);
+    let to = Pos2::new(body.min.x + body.width() * 0.4, y);
+    h.input_mut().events.push(egui::Event::PointerMoved(at));
+    h.run_steps(2);
+    h.input_mut().events.extend([button(at, true), egui::Event::PointerMoved(Pos2::new(at.x + 30.0, y)), egui::Event::PointerMoved(to)]);
+    h.run_steps(2);
+    h.input_mut().events.push(button(to, false));
+    h.run_steps(2);
+    let split = h.state().view.split;
+    assert!((split - 0.4).abs() < 0.01, "{split}");
+    // A double click puts it back in the middle. (The harness's clock moves a quarter
+    // second a step: past a double click's, which is made longer here.)
+    h.ctx.options_mut(|o| o.input_options.max_double_click_delay = 5.0);
+    let at = Pos2::new(body.min.x + h.state().view.split_left(body.width()) + 0.5, y);
+    for ev in [egui::Event::PointerMoved(at), button(at, true), button(at, false), button(at, true), button(at, false)] {
+        h.input_mut().events.push(ev);
+        h.run_steps(2);
+    }
+    assert_eq!(h.state().view.split, 0.5);
 }
 
 #[test]
@@ -1474,9 +1578,9 @@ fn dragging_the_scroll_bar_scrolls_the_view_and_a_click_on_its_track_jumps() {
     assert_eq!(s.view.scroll, 0.0);
     let (win, area) = {
         let t = s.view.scrollbar_target(s.chrome.fg, s.chrome.bg).expect("more than fits");
-        (t.win, t.area)
+        (t.bar, t.area)
     };
-    assert_eq!(win, crate::scrollbar::DIFF);
+    assert_eq!(win, crate::scrollbar::Bar::Diff);
     // The thumb is at the top: grab it, and pull it half way down the track.
     let x = area.max.x - 5.0;
     let (taken, first) = s.bars.press(Pos2::new(x, area.min.y + 4.0));
@@ -1486,7 +1590,7 @@ fn dragging_the_scroll_bar_scrolls_the_view_and_a_click_on_its_track_jumps() {
     }
     assert_eq!(s.view.scroll, 0.0, "grabbed where it is");
     let (win, y) = s.bars.drag_to(Pos2::new(x, area.min.y + area.height() / 2.0)).expect("moved");
-    assert_eq!(win, crate::scrollbar::DIFF);
+    assert_eq!(win, crate::scrollbar::Bar::Diff);
     s.view.scroll_to(y as f32);
     let max = s.view.max_scroll();
     assert!(max > 0.0 && s.view.scroll > 0.0 && s.view.scroll < max, "{} of {max}", s.view.scroll);

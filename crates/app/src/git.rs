@@ -492,6 +492,98 @@ fn ignore_pattern(path: &str) -> String {
     out
 }
 
+/// One git command an operation ran, with all it said: what the Git output shows.
+#[derive(Clone, Debug)]
+pub struct Ran {
+    pub args: Vec<String>,
+    /// Where it ran (not shown: the Git output is of the one repository Source Control has).
+    #[allow(dead_code)]
+    pub dir: PathBuf,
+    pub when: chrono::DateTime<chrono::Local>,
+    pub took: Duration,
+    /// `None`: git ended by a signal (or didn't start).
+    pub code: Option<i32>,
+    pub stdout: String,
+    pub stderr: String,
+}
+
+impl Ran {
+    /// What the Git output shows for it, as a terminal reads it (colors by
+    /// escape sequences, so the theme's ANSI colors apply): the time, the
+    /// command in bold (with how long it took when that was over a second),
+    /// its output as it came, a red `exit N` when it failed, and a blank line.
+    /// Lines end with "\r\n".
+    pub fn transcript(&self) -> String {
+        const DIM: &str = "\x1b[2m";
+        const BOLD: &str = "\x1b[1m";
+        const RED: &str = "\x1b[31m";
+        const OFF: &str = "\x1b[0m";
+        let mut out = format!("{DIM}[{}]{OFF} {BOLD}git", self.when.format("%H:%M:%S"));
+        for arg in &self.args {
+            out.push(' ');
+            out.push_str(&quote_arg(arg));
+        }
+        out.push_str(OFF);
+        if self.took >= Duration::from_secs(1) {
+            out.push_str(&format!(" {DIM}({:.1}s){OFF}", self.took.as_secs_f32()));
+        }
+        out.push_str("\r\n");
+        for text in [&self.stdout, &self.stderr] {
+            // (Git ends its lines with "\n": a terminal wants "\r\n".)
+            for line in text.lines() {
+                out.push_str(line);
+                out.push_str("\r\n");
+            }
+        }
+        match self.code {
+            Some(0) => {}
+            Some(code) => out.push_str(&format!("{RED}exit {code}{OFF}\r\n")),
+            None => out.push_str(&format!("{RED}ended by a signal{OFF}\r\n")),
+        }
+        out.push_str("\r\n");
+        out
+    }
+}
+
+/// An argument as a shell would need it written to be one word, on one line.
+fn quote_arg(arg: &str) -> String {
+    let plain = !arg.is_empty() && arg.chars().all(|c| c.is_alphanumeric() || "-_./=:@%+,~^".contains(c));
+    if plain {
+        return arg.to_owned();
+    }
+    // (A new line in a commit message would break the line: it is shown as `\n`.)
+    let escaped = arg.replace('\'', r"'\''").replace("\r\n", "\\n").replace('\n', "\\n");
+    format!("'{escaped}'")
+}
+
+thread_local! {
+    /// While `Some`, what `run_git` does on this thread is put here.
+    static RECORD: std::cell::RefCell<Option<Vec<Ran>>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Do `f`, and with it what git commands it ran on this thread (and their output).
+fn recording<T>(f: impl FnOnce() -> T) -> (T, Vec<Ran>) {
+    RECORD.with(|r| *r.borrow_mut() = Some(Vec::new()));
+    let result = f();
+    (result, RECORD.with(|r| r.borrow_mut().take()).unwrap_or_default())
+}
+
+/// Do `f` without recording what it runs.
+fn unrecorded<T>(f: impl FnOnce() -> T) -> T {
+    let kept = RECORD.with(|r| r.borrow_mut().take());
+    let result = f();
+    RECORD.with(|r| *r.borrow_mut() = kept);
+    result
+}
+
+fn record(ran: impl FnOnce() -> Ran) {
+    RECORD.with(|r| {
+        if let Some(list) = r.borrow_mut().as_mut() {
+            list.push(ran());
+        }
+    });
+}
+
 /// `git` in `dir`, never waiting for an answer: no terminal to ask in, an
 /// editor that accepts what it's given. `Err`: what git said.
 fn run_git(dir: &Path, args: &[&str], input: Option<&str>) -> Result<String, String> {
@@ -504,11 +596,21 @@ fn run_git(dir: &Path, args: &[&str], input: Option<&str>) -> Result<String, Str
     cmd.env("GIT_TERMINAL_PROMPT", "0").env("GIT_EDITOR", "true").env("GIT_MERGE_AUTOEDIT", "no");
     cmd.stdin(if input.is_some() { Stdio::piped() } else { Stdio::null() });
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let (when, started) = (chrono::Local::now(), Instant::now());
     let mut child = cmd.spawn().map_err(|e| format!("git doesn't run: {e}"))?;
     if let (Some(text), Some(mut stdin)) = (input, child.stdin.take()) {
         let _ = stdin.write_all(text.as_bytes());
     }
     let out = child.wait_with_output().map_err(|e| e.to_string())?;
+    record(|| Ran {
+        args: args.iter().map(|a| (*a).to_owned()).collect(),
+        dir: dir.to_path_buf(),
+        when,
+        took: started.elapsed(),
+        code: out.status.code(),
+        stdout: String::from_utf8_lossy(&out.stdout).trim_end().to_owned(),
+        stderr: String::from_utf8_lossy(&out.stderr).trim_end().to_owned(),
+    });
     let stdout = String::from_utf8_lossy(&out.stdout).trim().to_owned();
     if out.status.success() {
         return Ok(stdout);
@@ -522,7 +624,8 @@ fn run_git(dir: &Path, args: &[&str], input: Option<&str>) -> Result<String, Str
 /// A pull that doesn't stop to ask how to reconcile: the user's own settings
 /// if there are any, else a merge (as VS Code's Sync).
 fn pull(dir: &Path) -> Result<(), String> {
-    let set = |key: &str| run_git(dir, &["config", "--get", key], None).is_ok();
+    // (Not recorded: `config --get` ends with 1 for a setting that isn't set.)
+    let set = |key: &str| unrecorded(|| run_git(dir, &["config", "--get", key], None).is_ok());
     let mut args = vec!["pull", "--no-edit"];
     if !set("pull.rebase") && !set("pull.ff") {
         args.push("--no-rebase");
@@ -708,8 +811,8 @@ enum OpRequest {
 
 /// What the operations thread answers.
 pub enum OpDone {
-    /// `op` finished: `Err` is what git said.
-    Ran(Op, Result<(), String>),
+    /// `op` finished: `Err` is what git said; then the git commands it ran.
+    Ran(Op, Result<(), String>, Vec<Ran>),
     /// After `Op::UndoCommit` worked: the message of the commit it undid.
     Undone(String),
     Files(String, Vec<Entry>),
@@ -737,9 +840,9 @@ impl GitOpsWorker {
                         OpRequest::Run(dir, op) => {
                             // (Read before the reset: it's what the box gets back.)
                             let undone = (op == Op::UndoCommit).then(|| last_message(&dir));
-                            let result = run(&dir, &op, &crate::trash_can::move_to_trash);
+                            let (result, ran) = recording(|| run(&dir, &op, &crate::trash_can::move_to_trash));
                             let ok = result.is_ok();
-                            done.push(OpDone::Ran(op, result));
+                            done.push(OpDone::Ran(op, result, ran));
                             if let (true, Some(Some(message))) = (ok, undone) {
                                 done.push(OpDone::Undone(message));
                             }
@@ -784,6 +887,95 @@ impl GitOpsWorker {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_operation_records_its_git_commands_with_their_output() {
+        let f = Fixture::new("record");
+        std::fs::write(f.me.join("rec.txt"), "one\n").unwrap();
+        let (result, ran) = recording(|| run(&f.me, &Op::StageAll, &no_trash));
+        assert!(result.is_ok());
+        assert_eq!(ran.len(), 1);
+        assert_eq!(ran[0].args, ["add", "-A"]);
+        assert_eq!((ran[0].dir.as_path(), ran[0].code), (f.me.as_path(), Some(0)));
+        // A commit is quiet (and its message goes in on stdin, which isn't recorded).
+        let (result, ran) = recording(|| run(&f.me, &commit_op("Record it"), &no_trash));
+        assert!(result.is_ok());
+        let commit = ran.iter().find(|r| r.args.first().map(String::as_str) == Some("commit")).expect("the commit");
+        assert!(commit.args.contains(&"--quiet".to_owned()) && commit.code == Some(0));
+        // A push to the remote tells what it did, on stderr.
+        let (result, ran) = recording(|| run(&f.me, &Op::Push, &no_trash));
+        assert!(result.is_ok());
+        let push = ran.iter().find(|r| r.args.first().map(String::as_str) == Some("push")).expect("the push");
+        assert!(push.stderr.contains("main -> main"), "{}", push.stderr);
+        // (Nothing is kept once taken.)
+        assert!(RECORD.with(|r| r.borrow().is_none()));
+    }
+
+    #[test]
+    fn a_failing_operation_records_what_git_said_and_its_exit_code() {
+        let f = Fixture::new("record-fail");
+        let (result, ran) = recording(|| run(&f.me, &commit_op("nothing to commit"), &no_trash));
+        assert!(result.is_err());
+        let commit = ran.last().expect("the commit");
+        assert_eq!(commit.args.first().map(String::as_str), Some("commit"));
+        assert_eq!(commit.code, Some(1));
+        assert!(commit.stdout.contains("nothing to commit") || commit.stderr.contains("nothing to commit"));
+    }
+
+    #[test]
+    fn reading_the_repository_records_nothing() {
+        let f = Fixture::new("record-read");
+        let ((repo, details), ran) = recording(|| (status(&f.me), details(&f.me)));
+        assert!(repo.is_some() && !details.commits.is_empty());
+        assert!(ran.is_empty());
+    }
+
+    fn ran(args: &[&str], code: Option<i32>, took_ms: u64, stdout: &str, stderr: &str) -> Ran {
+        Ran {
+            args: args.iter().map(|a| a.to_string()).collect(),
+            dir: PathBuf::from("/repo"),
+            when: chrono::Local::now(),
+            took: Duration::from_millis(took_ms),
+            code,
+            stdout: stdout.into(),
+            stderr: stderr.into(),
+        }
+    }
+
+    #[test]
+    fn a_command_is_written_with_its_output_and_how_it_ended() {
+        let t = ran(&["push", "origin", "main"], Some(0), 200, "", "remote: Create a pull request\nTo origin\n   a..b  main -> main").transcript();
+        // The time (dim), the command (bold), the output as it was, a blank line.
+        assert!(t.starts_with("\x1b[2m[") && t.contains("]\x1b[0m \x1b[1mgit push origin main\x1b[0m\r\nremote: Create"), "{t:?}");
+        assert!(t.ends_with("main -> main\r\n\r\n"), "{t:?}");
+        assert!(!t.contains("exit") && !t.contains("(0."));
+        // A failure ends in a red exit line; a slow one says how long it took.
+        let t = ran(&["commit", "-m", "two words"], Some(1), 2300, "", "hook said no").transcript();
+        assert!(t.contains("git commit -m 'two words'\x1b[0m \x1b[2m(2.3s)\x1b[0m\r\nhook said no\r\n\x1b[31mexit 1\x1b[0m\r\n\r\n"), "{t:?}");
+        // Both streams are shown, stdout first; a signal is said as such.
+        let t = ran(&["pull"], None, 5, "out", "err").transcript();
+        assert!(t.contains("\r\nout\r\nerr\r\n\x1b[31mended by a signal"), "{t:?}");
+    }
+
+    #[test]
+    fn arguments_with_spaces_or_new_lines_are_quoted_on_one_line() {
+        assert_eq!(quote_arg("main"), "main");
+        assert_eq!(quote_arg("--format=%B"), "--format=%B");
+        assert_eq!(quote_arg("two words"), "'two words'");
+        assert_eq!(quote_arg("it's"), r"'it'\''s'");
+        assert_eq!(quote_arg("title\n\nbody"), "'title\\n\\nbody'");
+        assert_eq!(quote_arg(""), "''");
+    }
+
+    #[test]
+    fn a_pull_does_not_record_its_look_at_the_settings() {
+        let f = Fixture::new("record-pull");
+        let (result, ran) = recording(|| run(&f.me, &Op::Pull, &no_trash));
+        assert!(result.is_ok(), "{result:?}");
+        // (`config --get` ends with 1 when a setting isn't set: not a failure to show.)
+        assert!(ran.iter().all(|r| r.args.first().map(String::as_str) != Some("config")), "{ran:?}");
+        assert!(ran.iter().any(|r| r.args.first().map(String::as_str) == Some("pull")));
+    }
 
     #[test]
     fn numstat_counts_files_and_lines() {
@@ -1316,7 +1508,7 @@ u UU N... 100644 100644 100644 100644 a b c fight.rs\0\
             }
             std::thread::sleep(Duration::from_millis(10));
         }
-        assert!(matches!(&finished[..], [OpDone::Ran(Op::StageAll, Ok(())), OpDone::Ran(Op::Commit { .. }, Ok(()))]));
+        assert!(matches!(&finished[..], [OpDone::Ran(Op::StageAll, Ok(()), _), OpDone::Ran(Op::Commit { .. }, Ok(()), _)]));
         assert!(ops.running.is_empty());
         status.refresh(&f.me, true, true);
         let (repo, details) = wait_status(&status);
@@ -1336,7 +1528,7 @@ u UU N... 100644 100644 100644 100644 a b c fight.rs\0\
             }
             std::thread::sleep(Duration::from_millis(10));
         }
-        assert!(matches!(&finished[2..], [OpDone::Ran(Op::UndoCommit, Ok(())), OpDone::Undone(m)] if m == "third\n\nwith a body\nand lines"));
+        assert!(matches!(&finished[2..], [OpDone::Ran(Op::UndoCommit, Ok(()), _), OpDone::Undone(m)] if m == "third\n\nwith a body\nand lines"));
         assert!(ops.running.is_empty());
 
         // Not a repository.

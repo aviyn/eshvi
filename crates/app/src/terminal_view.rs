@@ -322,6 +322,14 @@ pub struct TerminalView {
     /// The cells and size of the last frame, to place the pointer.
     origin: Pos2,
     grid: (usize, usize),
+    /// Where the view was drawn last frame (a scroll bar goes at its right edge).
+    rect: Rect,
+    /// A scroll bar is being dragged: its press and drag are not the terminal's
+    /// (nor a program's that takes the mouse).
+    pub bar_drag: bool,
+    /// What the app draws over the view (its popups, as of the last frame): the pointer
+    /// there is theirs.
+    pub covered: Vec<Rect>,
 }
 
 impl TerminalView {
@@ -343,6 +351,9 @@ impl TerminalView {
             focused: false,
             origin: Pos2::ZERO,
             grid: (80, 24),
+            rect: Rect::ZERO,
+            bar_drag: false,
+            covered: Vec::new(),
         }
     }
 
@@ -413,6 +424,7 @@ impl TerminalView {
         let rows = ((area.height() / ch).floor() as usize).clamp(1, u16::MAX as usize);
         self.origin = area.min;
         self.grid = (cols, rows);
+        self.rect = rect;
         let ppp = ctx.pixels_per_point();
         self.term.resize(term::Size { cols: cols as u16, rows: rows as u16, cell_w: (cw * ppp) as u16, cell_h: (ch * ppp) as u16 });
         self.term.set_key_options(KeyOptions { option_as_meta: look.option_as_meta });
@@ -614,6 +626,10 @@ impl TerminalView {
                         }
                         continue;
                     }
+                    // (Nothing to send keys to: only the shortcuts above, Vi mode and the wheel.)
+                    if !self.term.takes_input() {
+                        continue;
+                    }
                     // With Option the logical key is the composed character.
                     let which = if modifiers.alt { physical_key.unwrap_or(*key) } else { *key };
                     let Some(k) = term_key(which) else { continue };
@@ -636,6 +652,7 @@ impl TerminalView {
                     self.typed(ctx, text);
                 }
                 Event::Ime(ImeEvent::Commit(text)) => self.typed(ctx, text),
+                Event::Paste(_) if !self.term.takes_input() => {}
                 Event::Paste(text) => {
                     self.term.paste(text);
                     self.began_input();
@@ -657,6 +674,9 @@ impl TerminalView {
             for c in text.chars() {
                 self.vi_outcome(ctx, self.term.vi_key(ViKey::Char(c)));
             }
+            return;
+        }
+        if !self.term.takes_input() {
             return;
         }
         self.term.write_text(text);
@@ -714,10 +734,11 @@ impl TerminalView {
         let (cw, ch) = (self.metrics.width, self.metrics.height);
         let (cols, rows) = self.grid;
         let cell_size = Vec2::new(cw, ch);
-        let over = |p: Pos2| rect.contains(p) && ctx.layer_id_at(p).is_none_or(|l| l.order == egui::Order::Middle || l.order == egui::Order::Foreground || l.order == egui::Order::Background);
+        let covered = std::mem::take(&mut self.covered);
+        let over = |p: Pos2| rect.contains(p) && !covered.iter().any(|r| r.contains(p)) && ctx.layer_id_at(p).is_none_or(|l| l.order == egui::Order::Middle || l.order == egui::Order::Foreground || l.order == egui::Order::Background);
         for ev in events {
             match ev {
-                Event::PointerButton { pos, button, pressed: true, modifiers } if rect.contains(*pos) && over(*pos) => {
+                Event::PointerButton { pos, button, pressed: true, modifiers } if rect.contains(*pos) && over(*pos) && !self.bar_drag => {
                     out.pressed = true;
                     let (row, col, side) = hit_cell(*pos, self.origin, cell_size, cols, rows);
                     let mods = Mods { shift: modifiers.shift, alt: modifiers.alt, ctrl: modifiers.ctrl, sup: modifiers.mac_cmd };
@@ -743,7 +764,7 @@ impl TerminalView {
                         }
                         continue;
                     }
-                    if *button == PointerButton::Middle && look.middle_click_paste {
+                    if *button == PointerButton::Middle && look.middle_click_paste && self.term.takes_input() {
                         if let Ok(text) = arboard::Clipboard::new().and_then(|mut c| c.get_text()) {
                             self.term.paste(&text);
                             self.began_input();
@@ -767,6 +788,7 @@ impl TerminalView {
                     }
                     self.drag = Some(Drag::Select);
                 }
+                Event::PointerMoved(_) if self.bar_drag => {}
                 Event::PointerMoved(pos) => match self.drag {
                     Some(Drag::Select) => {
                         let (row, col, side) = hit_cell(*pos, self.origin, cell_size, cols, rows);
@@ -824,6 +846,7 @@ impl TerminalView {
                 _ => {}
             }
         }
+        self.covered = covered;
         // Dragging a selection past the top or bottom scrolls (and goes on scrolling).
         if self.drag == Some(Drag::Select) {
             if let Some(pos) = ctx.input(|i| i.pointer.latest_pos()) {
@@ -836,6 +859,34 @@ impl TerminalView {
                 }
             }
         }
+    }
+
+    // The scroll bar.
+
+    /// What the scroll bar shows: the screen within the scrollback and the
+    /// screen, oldest line first. None with no scrollback yet, or on the
+    /// alternate screen (a full-screen program scrolls itself).
+    pub fn scrollbar_target(&self, look: &Look) -> Option<crate::scrollbar::Target> {
+        let at = self.term.scroll_position();
+        if at.alt_screen || at.history == 0 {
+            return None;
+        }
+        let top = (at.history - at.offset.min(at.history)) as i64;
+        Some(crate::scrollbar::Target {
+            bar: crate::scrollbar::Bar::Terminal(self.id),
+            area: self.rect,
+            top,
+            bottom: top + at.rows as i64,
+            lines: (at.history + at.rows) as i64,
+            fg: look.fg,
+            bg: look.bg,
+        })
+    }
+
+    /// Scroll so that line `top` (0 the oldest) is first in view (the scroll bar's).
+    pub fn scroll_to_line(&self, top: i64) {
+        let at = self.term.scroll_position();
+        self.term.scroll_to(at.history.saturating_sub(top.max(0) as usize));
     }
 
     // Links.
@@ -1253,6 +1304,121 @@ mod tests {
         assert!(out.pressed, "the panel still takes the keyboard");
         assert_eq!(out.link, Some(Target::File { path, line: None, col: None }));
         let _ = std::fs::remove_dir_all(&base);
+    }
+
+    /// A view of a shell script's terminal (cells of 8 by 16), once `ready` says so.
+    fn view_running(script: &str, rows: u16, ready: impl Fn(&Terminal) -> bool) -> TerminalView {
+        let t = Terminal::spawn(SpawnOptions::new(vec!["/bin/sh".into(), "-c".into(), script.into()], term::Size { cols: 40, rows, cell_w: 8, cell_h: 16 })).unwrap();
+        let start = Instant::now();
+        while !ready(&t) && start.elapsed() < Duration::from_secs(10) {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert!(ready(&t), "the output");
+        let mut view = TerminalView::new(t);
+        view.metrics = CellMetrics { width: 8.0, height: 16.0 };
+        view.rect = Rect::from_min_size(Pos2::new(10.0, 20.0), Vec2::new(320.0, 200.0));
+        view
+    }
+
+    fn plain_look(fonts: &GridFonts) -> Look<'_> {
+        Look { fonts, linespace: 0.0, fg: Color32::WHITE, bg: Color32::BLACK, accent: Color32::BLUE, ansi: [None; 16], option_as_meta: true, blink: false, copy_on_select: true, middle_click_paste: true }
+    }
+
+    #[test]
+    fn the_scroll_bar_shows_the_screen_within_the_scrollback_and_not_without_it_or_on_the_alternate_screen() {
+        let ctx = Context::default();
+        let fonts = crate::fonts::install(&ctx, &crate::fonts::FontSpec::default_with_size(14.0), None, None, None, None);
+        let look = plain_look(&fonts);
+        // Nothing has scrolled off yet.
+        let view = view_running("echo one; sleep 5", 12, |t| rows_of(t).iter().any(|r| r == "one"));
+        assert!(view.scrollbar_target(&look).is_none());
+        // 30 lines on 12 rows: the screen at the bottom of what there is.
+        let view = view_running("for i in $(seq 1 30); do echo line$i; done; sleep 5", 12, |t| t.history_size() >= 18);
+        let history = view.terminal().history_size();
+        let t = view.scrollbar_target(&look).expect("there is scrollback");
+        assert_eq!((t.bar, t.area), (crate::scrollbar::Bar::Terminal(view.id()), view.rect));
+        assert_eq!((t.top, t.bottom, t.lines), (history as i64, history as i64 + 12, history as i64 + 12));
+        // Scrolled back by 5: the screen is 5 lines higher up.
+        view.terminal().scroll_to(5);
+        let t = view.scrollbar_target(&look).unwrap();
+        assert_eq!((t.top, t.bottom), (history as i64 - 5, history as i64 + 7));
+        // A full-screen program has the alternate screen, and scrolls itself.
+        let view = view_running("for i in $(seq 1 30); do echo line$i; done; printf '\\033[?1049h'; sleep 5", 12, |t| t.scroll_position().alt_screen);
+        assert!(view.scrollbar_target(&look).is_none());
+    }
+
+    #[test]
+    fn dragging_the_scroll_bar_scrolls_the_scrollback_and_the_terminal_does_not_take_the_press() {
+        let ctx = Context::default();
+        let fonts = crate::fonts::install(&ctx, &crate::fonts::FontSpec::default_with_size(14.0), None, None, None, None);
+        let look = plain_look(&fonts);
+        let mut view = view_running("for i in $(seq 1 60); do echo line$i; done; sleep 5", 12, |t| t.history_size() >= 48);
+        let mut bars = crate::scrollbar::Scrollbars::new(crate::scrollbar::Mode::Always);
+        let mut target = view.scrollbar_target(&look);
+        let area = target.as_ref().unwrap().area;
+        let mut frame = ctx.run_ui(egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))), ..Default::default() }, |ui| {
+            bars.paint(ui.ctx(), ui.painter(), target.take().into_iter().collect());
+        });
+        frame.textures_delta.clear();
+        // The thumb is at the bottom: grab it there and pull it up to the middle of the track.
+        let x = area.max.x - 5.0;
+        let (taken, first) = bars.press(Pos2::new(x, area.max.y - 4.0));
+        assert!(taken);
+        assert_eq!(first.map(|(b, _)| b), Some(crate::scrollbar::Bar::Terminal(view.id())));
+        let (bar, top) = bars.drag_to(Pos2::new(x, area.center().y)).expect("moved");
+        assert_eq!(bar, crate::scrollbar::Bar::Terminal(view.id()));
+        view.scroll_to_line(top);
+        let at = view.terminal().scroll_position();
+        assert!(at.offset > 0 && at.offset < at.history, "{at:?}");
+        // All the way up: the oldest line is the first in view.
+        let (_, top) = bars.drag_to(Pos2::new(x, area.min.y - 100.0)).unwrap();
+        assert_eq!(top, 0);
+        view.scroll_to_line(top);
+        assert_eq!(view.terminal().scroll_position().offset, at.history);
+        bars.release();
+        // While the bar is dragged a press on the view is not a selection or a report.
+        view.bar_drag = true;
+        let pos = view.origin + Vec2::new(20.0, 20.0);
+        let input = egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))),
+            events: vec![Event::PointerMoved(pos), Event::PointerButton { pos, button: PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE }],
+            ..Default::default()
+        };
+        let mut pressed = None;
+        let mut frame = ctx.run_ui(input, |ui| pressed = Some(view.show(ui, &look, true).pressed));
+        frame.textures_delta.clear();
+        assert_eq!(pressed, Some(false));
+        assert!(!view.terminal().has_selection());
+    }
+
+    #[test]
+    fn the_wheel_over_a_popup_on_the_view_does_not_scroll_it() {
+        let ctx = Context::default();
+        let fonts = crate::fonts::install(&ctx, &crate::fonts::FontSpec::default_with_size(14.0), None, None, None, None);
+        let look = plain_look(&fonts);
+        let mut view = view_running("for i in $(seq 1 60); do echo line$i; done; sleep 5", 12, |t| t.history_size() >= 48);
+        let pos = view.origin + Vec2::new(20.0, 20.0);
+        let wheel = |view: &mut TerminalView| {
+            let input = egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0))),
+                events: vec![
+                    Event::PointerMoved(pos),
+                    Event::MouseWheel { unit: MouseWheelUnit::Line, delta: Vec2::new(0.0, 3.0), phase: egui::TouchPhase::Move, source: egui::MouseWheelSource::Wheel, modifiers: egui::Modifiers::NONE },
+                ],
+                ..Default::default()
+            };
+            let mut frame = ctx.run_ui(input, |ui| {
+                view.show(ui, &look, false);
+            });
+            frame.textures_delta.clear();
+            view.terminal().scroll_position().offset
+        };
+        // A popup (the agent's Changes) is over the pointer: the wheel is the popup's.
+        view.covered = vec![Rect::from_center_size(pos, Vec2::splat(40.0))];
+        assert_eq!(wheel(&mut view), 0);
+        // Without it the wheel scrolls back.
+        view.covered.clear();
+        assert!(wheel(&mut view) > 0);
     }
 
     /// Run the view through egui headlessly for a few frames; the text it paints.

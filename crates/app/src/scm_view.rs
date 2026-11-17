@@ -51,6 +51,8 @@ pub enum Action {
     FocusEditor,
     /// Read the repository again now.
     Refresh,
+    /// Show the bottom panel's Git output.
+    ShowGitOutput,
     /// The files of a commit in the graph (answered by `set_files`).
     CommitFiles(Commit),
     /// How much a commit in the graph changed (answered by `set_stats`).
@@ -1292,6 +1294,10 @@ impl ScmView {
                 op(actions, Op::StashPop);
             }
         });
+        ui.separator();
+        if item(ui, true, "Show Git Output") {
+            actions.push(Action::ShowGitOutput);
+        }
     }
 
     /// The repository's name and branch; a click opens the branch menu.

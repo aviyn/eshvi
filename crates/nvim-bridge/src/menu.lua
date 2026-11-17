@@ -164,6 +164,7 @@ local actions = {
   outline = cmd('EshviOutline focus'),
   panel = cmd('EshviPanel toggle'),
   problems = cmd('EshviProblems toggle'),
+  git_output = cmd('EshviGitOutput toggle'),
   terminal = cmd('EshviTerminal toggle'),
   agent = cmd('EshviAgent toggle'),
   -- The file, or the selected lines, to the agent as context.
@@ -297,6 +298,7 @@ local menus = {
     { 'Outline', '', 'outline' },
     { 'Panel', '⌘J', 'panel', terminal },
     { 'Problems', '⇧⌘M', 'problems', terminal },
+    { 'Git Output', '⇧⌘U', 'git_output', terminal },
     { 'Terminal', '⌃`', 'terminal', terminal },
     { 'Agent', '⌥⌘B', 'agent', agent },
     { 'Send to Agent', '⌥⌘K', 'send_to_agent', agent },

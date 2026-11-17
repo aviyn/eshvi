@@ -1,4 +1,4 @@
--- The bottom panel's Neovim side. The panel itself (Problems and terminals) is the GUI's own,
+-- The bottom panel's Neovim side. The panel itself (Problems, the Git output and terminals) is the GUI's own,
 -- drawn in the window beside Neovim's grid; Neovim has no panel windows, and :copen is its own
 -- quickfix window. The commands keep their arguments but only tell the GUI, as :EshviExplorer
 -- does, and the diagnostics are reported for the Problems list (`gui_problems`).
@@ -46,6 +46,16 @@ end, {
     return { 'toggle', 'show', 'hide', 'file', 'workspace', 'severity', 'filter' }
   end,
   desc = 'eshvi: the bottom panel\'s Problems list',
+})
+-- :EshviGitOutput [toggle|show|hide]: what the git commands of Source Control said.
+vim.api.nvim_create_user_command('EshviGitOutput', function(o)
+  tell('git_output', o.fargs)
+end, {
+  nargs = '?',
+  complete = function()
+    return { 'toggle', 'show', 'hide' }
+  end,
+  desc = 'eshvi: the bottom panel\'s Git output',
 })
 
 -- Every diagnostic (hints left out, as in VS Code's Problems) for the GUI's list, after

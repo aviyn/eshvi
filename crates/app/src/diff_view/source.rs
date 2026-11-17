@@ -6,6 +6,7 @@
 //! their own.
 
 use std::collections::VecDeque;
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{mpsc, Arc, Condvar, Mutex};
@@ -13,7 +14,7 @@ use std::sync::{mpsc, Arc, Condvar, Mutex};
 use egui::Color32;
 use syntect::highlighting::Theme;
 
-use super::model::{self, Body, Content};
+use super::model::{self, Body, Content, Shown};
 use crate::git::Commit;
 
 /// Where one side of a file is read from.
@@ -163,11 +164,49 @@ pub fn read_sides(top: &Path, spec: &FileSpec) -> (Content, Content) {
 /// A colored stretch of a line.
 pub type Span = crate::markdown::Span;
 
-/// The syntax colors of both sides' lines.
+/// The syntax colors of both sides' lines: of those shown, `None` for those not colored
+/// (hidden in a fold when the colors were made).
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Colors {
-    pub old: Vec<Vec<Span>>,
-    pub new: Vec<Vec<Span>>,
+    pub old: Vec<Option<Vec<Span>>>,
+    pub new: Vec<Option<Vec<Span>>>,
+}
+
+impl Colors {
+    /// Take the lines `more` colors.
+    pub fn merge(&mut self, more: Colors) {
+        for (have, got) in [(&mut self.old, more.old), (&mut self.new, more.new)] {
+            if have.len() != got.len() {
+                *have = got;
+                continue;
+            }
+            for (h, g) in have.iter_mut().zip(got) {
+                if g.is_some() {
+                    *h = g;
+                }
+            }
+        }
+    }
+
+    /// The lines in `shown` (old, new) not colored yet.
+    pub fn missing(&self, shown: &Shown) -> Option<Shown> {
+        let gaps = |have: &[Option<Vec<Span>>], ranges: &[Range<usize>]| -> Vec<Range<usize>> {
+            let mut out: Vec<Range<usize>> = Vec::new();
+            for r in ranges {
+                for i in r.clone() {
+                    if have.get(i).is_some_and(Option::is_none) {
+                        match out.last_mut() {
+                            Some(last) if last.end == i => last.end = i + 1,
+                            _ => out.push(i..i + 1),
+                        }
+                    }
+                }
+            }
+            out
+        };
+        let (old, new) = (gaps(&self.old, &shown.0), gaps(&self.new, &shown.1));
+        (!old.is_empty() || !new.is_empty()).then_some((old, new))
+    }
 }
 
 /// A file read, diffed and colored.
@@ -214,17 +253,29 @@ fn diff(top: &Path, spec: &FileSpec, max_lines: usize) -> Loaded {
     Loaded { body, colors: None, status }
 }
 
-/// The syntax colors of a text diff's two sides, made in parallel (none for
-/// another kind of body, or a language that is not known).
-pub fn colors(path: &str, body: &Body, coloring: &Coloring) -> Option<Colors> {
+/// The syntax colors of the lines `shown` (old, new) of a text diff's two sides, made in
+/// parallel (none for another kind of body, or a language that is not known).
+pub fn colors(path: &str, body: &Body, coloring: &Coloring, shown: &Shown) -> Option<Colors> {
     let Body::Text(d) = body else { return None };
-    let spans = |lines: &[String]| crate::markdown::spans(&lines.join("\n"), language(path), &coloring.theme, coloring.fg);
+    side_colors(path, &d.old, &d.new, coloring, shown)
+}
+
+fn side_colors(path: &str, old: &[String], new: &[String], coloring: &Coloring, shown: &Shown) -> Option<Colors> {
+    let spans = |lines: &[String], ranges: &[Range<usize>]| crate::markdown::spans(lines, ranges, language(path), &coloring.theme, coloring.fg);
     let (old, new) = std::thread::scope(|s| {
-        let old = s.spawn(|| spans(&d.old));
-        let new = spans(&d.new);
+        let old = s.spawn(|| spans(old, &shown.0));
+        let new = spans(new, &shown.1);
         (old.join().ok().flatten(), new)
     });
     Some(Colors { old: old?, new: new? })
+}
+
+/// The lines a text diff shows as it is first drawn (no fold opened yet).
+fn first_shown(body: &Body, context: usize) -> Shown {
+    match body {
+        Body::Text(d) => d.shown(context, &Default::default()),
+        _ => Default::default(),
+    }
 }
 
 /// Read, diff and color one file, in one piece (what the worker does for a
@@ -232,7 +283,8 @@ pub fn colors(path: &str, body: &Body, coloring: &Coloring) -> Option<Colors> {
 #[cfg(test)]
 pub fn load(top: &Path, spec: &FileSpec, coloring: Option<&Coloring>, max_lines: usize) -> Loaded {
     let mut loaded = diff(top, spec, max_lines);
-    loaded.colors = coloring.and_then(|c| colors(&spec.path, &loaded.body, c));
+    let shown = first_shown(&loaded.body, 3);
+    loaded.colors = coloring.and_then(|c| colors(&spec.path, &loaded.body, c, &shown));
     loaded
 }
 
@@ -268,7 +320,11 @@ pub fn commit_specs(top: &Path, commit: &Commit) -> Vec<FileSpec> {
 pub enum Job {
     /// Read file `index` of the view. `serial` names this request: what comes
     /// back says it, and the view drops what answers an older one.
-    Load { index: usize, serial: u64, top: PathBuf, spec: FileSpec, coloring: Option<Coloring>, max_lines: usize },
+    /// Its lines shown with `context` lines around a change are colored.
+    Load { index: usize, serial: u64, top: PathBuf, spec: FileSpec, coloring: Option<Coloring>, max_lines: usize, context: usize },
+    /// Color more of file `index`'s lines (a fold opened): those in `shown` (old, new) of
+    /// its two sides' `old` and `new`.
+    Colors { index: usize, serial: u64, path: String, old: Vec<String>, new: Vec<String>, coloring: Coloring, shown: Shown },
     /// List a commit's files.
     ListCommit { top: PathBuf, commit: Commit },
 }
@@ -276,7 +332,8 @@ pub enum Job {
 pub enum Done {
     /// The file's diff; its colors too, unless it is long (`COLORS_LATER_LINES`).
     Loaded { index: usize, serial: u64, loaded: Loaded },
-    /// The colors of a file whose diff was sent without them (none: no grammar).
+    /// The colors of a file whose diff was sent without them (none: no grammar), or of
+    /// more of its lines: what they color is taken, the rest kept.
     Colors { index: usize, serial: u64, colors: Option<Colors> },
     Files { files: Vec<FileSpec> },
 }
@@ -284,23 +341,29 @@ pub enum Done {
 /// Run one job, sending what it makes (a load of a long file makes two).
 fn run(job: Job, send: &dyn Fn(Done) -> bool) {
     match job {
-        Job::Load { index, serial, top, spec, coloring, max_lines } => {
+        Job::Load { index, serial, top, spec, coloring, max_lines, context } => {
             let mut loaded = diff(&top, &spec, max_lines);
             let Some(c) = coloring else {
                 send(Done::Loaded { index, serial, loaded });
                 return;
             };
-            let long = matches!(&loaded.body, Body::Text(d) if d.old.len().max(d.new.len()) > COLORS_LATER_LINES);
+            // Only what the rows show is colored, with the lines before each stretch read.
+            let shown = first_shown(&loaded.body, context);
+            let count = |r: &[Range<usize>]| r.iter().map(Range::len).sum::<usize>();
+            let long = count(&shown.0).max(count(&shown.1)) > COLORS_LATER_LINES;
             if long {
                 let body = loaded.body.clone();
                 if !send(Done::Loaded { index, serial, loaded }) {
                     return;
                 }
-                send(Done::Colors { index, serial, colors: colors(&spec.path, &body, &c) });
+                send(Done::Colors { index, serial, colors: colors(&spec.path, &body, &c, &shown) });
             } else {
-                loaded.colors = colors(&spec.path, &loaded.body, &c);
+                loaded.colors = colors(&spec.path, &loaded.body, &c, &shown);
                 send(Done::Loaded { index, serial, loaded });
             }
+        }
+        Job::Colors { index, serial, path, old, new, coloring, shown } => {
+            send(Done::Colors { index, serial, colors: side_colors(&path, &old, &new, &coloring, &shown) });
         }
         Job::ListCommit { top, commit } => {
             send(Done::Files { files: commit_specs(&top, &commit) });
@@ -513,7 +576,7 @@ mod tests {
         let worker = Worker::new(move || {
             let _ = tx.send(());
         });
-        let job = |index| Job::Load { index, serial: index as u64, top: repo.dir.clone(), spec: spec(Side::Missing, Side::Disk), coloring: None, max_lines: 100 };
+        let job = |index| Job::Load { index, serial: index as u64, top: repo.dir.clone(), spec: spec(Side::Missing, Side::Disk), coloring: None, max_lines: 100, context: 3 };
         worker.send(job(0), false);
         worker.send(job(1), false);
         let mut got = Vec::new();
@@ -540,7 +603,7 @@ mod tests {
         let colored = coloring.is_some();
         let mut s = spec(Side::Missing, Side::Disk);
         s.path = "a.rs".into();
-        worker.send(Job::Load { index: 3, serial: 7, top: repo.dir.clone(), spec: s, coloring, max_lines: 100_000 }, true);
+        worker.send(Job::Load { index: 3, serial: 7, top: repo.dir.clone(), spec: s, coloring, max_lines: 100_000, context: 3 }, true);
         let first = worker.done.recv_timeout(std::time::Duration::from_secs(20)).unwrap();
         let mut got = vec![first];
         if colored && matches!(&got[0], Done::Loaded { loaded, .. } if loaded.colors.is_none()) {
@@ -594,7 +657,8 @@ mod tests {
         let colors = loaded.colors.expect("rust is known");
         assert_eq!(colors.new.len(), 3);
         // "fn" and "main" don't share a color span.
-        assert!(colors.new[0].len() >= 3, "{:?}", pairs(&colors.new[0]));
+        let first = colors.new[0].as_deref().expect("a line shown is colored");
+        assert!(first.len() >= 3, "{:?}", pairs(first));
         assert!(load(&repo.dir, &s, None, 100).colors.is_none());
         s.path = "a.unknownext".into();
         repo.write("a.unknownext", "x\n");

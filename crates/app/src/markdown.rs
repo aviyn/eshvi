@@ -163,39 +163,150 @@ pub struct Span {
     pub italic: bool,
 }
 
-/// The spans of each line of `code` (byte ranges in the line, line ends left
-/// out) in `lang`'s grammar with `theme`; none when the language is unknown.
-/// For code drawn line by line (the diff view), where `highlight`'s one job
-/// of text won't do; `fg` is the plain text color.
-pub fn spans(code: &str, lang: &str, theme: &Theme, fg: Color32) -> Option<Vec<Vec<Span>>> {
+/// For a language whose block comments and strings aren't known (`Blocks`): how many
+/// lines before a stretch to be colored are read first (and not kept), so one opened just
+/// above it is colored as one.
+pub const COLOR_LEAD_LINES: usize = 30;
+
+/// The spans of `lines` (byte ranges in each line) in `lang`'s grammar with `theme`, for
+/// the lines in `ranges` (in order); the others are `None`, and so is all when the language
+/// is unknown. The diff view colors what it shows, not the lines its folds hide: each
+/// stretch is read from where it starts, or, when it is inside a block comment or string
+/// (found in the text, which is far quicker than reading it with the grammar), from where
+/// that opened; for a language with no `Blocks` known, from `COLOR_LEAD_LINES` before.
+/// For code drawn line by line, where `highlight`'s one job of text won't do; `fg` is the
+/// plain text color.
+pub fn spans(lines: &[String], ranges: &[std::ops::Range<usize>], lang: &str, theme: &Theme, fg: Color32) -> Option<Vec<Option<Vec<Span>>>> {
     let (ss, syntax) = syntax_for(lang)?;
     let mut theme = theme.clone();
     theme.settings.foreground.get_or_insert(syntect::highlighting::Color { r: fg.r(), g: fg.g(), b: fg.b(), a: 255 });
-    let mut lines = HighlightLines::new(syntax, &theme);
-    let mut out = Vec::new();
-    for line in LinesWithEndings::from(code) {
-        let ranges = lines.highlight_line(line, ss).ok()?;
-        let body = line.trim_end_matches(['\n', '\r']).len();
-        let mut at = 0;
-        let mut spans = Vec::new();
-        for (style, text) in ranges {
-            let (start, end) = (at, (at + text.len()).min(body));
-            at += text.len();
-            if start >= end {
-                continue;
-            }
-            let c = style.foreground;
-            spans.push(Span {
-                start,
-                end,
-                color: Color32::from_rgb(c.r, c.g, c.b),
-                bold: style.font_style.contains(FontStyle::BOLD),
-                italic: style.font_style.contains(FontStyle::ITALIC),
-            });
+    let mut out: Vec<Option<Vec<Span>>> = vec![None; lines.len()];
+    let starts: Vec<usize> = ranges.iter().map(|r| r.start).collect();
+    let open = Blocks::of(&syntax.name).map(|b| b.open_at(lines, &starts));
+    // Where the last stretch was read to, and how: a stretch that starts near it goes on.
+    let mut reader: Option<(usize, HighlightLines)> = None;
+    for (k, range) in ranges.iter().enumerate() {
+        let end = range.end.min(lines.len());
+        if range.start >= end {
+            continue;
         }
-        out.push(spans);
+        let lead = match &open {
+            Some(open) => open[k].unwrap_or(range.start),
+            None => range.start.saturating_sub(COLOR_LEAD_LINES),
+        };
+        let (mut at, mut hl) = match reader.take() {
+            Some((at, hl)) if at >= lead && at <= range.start => (at, hl),
+            _ => (lead, HighlightLines::new(syntax, &theme)),
+        };
+        while at < end {
+            let mut line = String::with_capacity(lines[at].len() + 1);
+            line.push_str(&lines[at]);
+            line.push('\n');
+            let ranges = hl.highlight_line(&line, ss).ok()?;
+            if at >= range.start {
+                out[at] = Some(line_spans(&ranges, lines[at].len()));
+            }
+            at += 1;
+        }
+        reader = Some((at, hl));
     }
     Some(out)
+}
+
+/// A language's block comments and multi-line strings, as text: where one opens and
+/// closes (the same for `"""`), and how a line comment starts (after which an opener
+/// doesn't count). Found by the grammar's name.
+struct Blocks {
+    pairs: &'static [(&'static str, &'static str)],
+    line_comment: Option<&'static str>,
+}
+
+impl Blocks {
+    fn of(syntax: &str) -> Option<Blocks> {
+        const C: &[(&str, &str)] = &[("/*", "*/")];
+        const PYTHON: &[(&str, &str)] = &[("\"\"\"", "\"\"\""), ("'''", "'''")];
+        const MARKUP: &[(&str, &str)] = &[("<!--", "-->")];
+        const MARKDOWN: &[(&str, &str)] = &[("```", "```"), ("~~~", "~~~"), ("<!--", "-->")];
+        let (pairs, line_comment) = match syntax {
+            "C" | "C++" | "Objective-C" | "Objective-C++" | "C#" | "D" | "Go" | "Java" | "JavaScript" | "Rust" | "Scala" | "Groovy"
+            | "PHP Source" | "SystemVerilog" => (C, Some("//")),
+            "CSS" => (C, None),
+            "Python" | "TOML" => (PYTHON, Some("#")),
+            "Lua" => (&[("--[[", "]]")][..], Some("--")),
+            "Ruby" => (&[("=begin", "=end")][..], Some("#")),
+            "HTML" | "XML" => (MARKUP, None),
+            "Markdown" | "MultiMarkdown" => (MARKDOWN, None),
+            _ => return None,
+        };
+        Some(Blocks { pairs, line_comment })
+    }
+
+    /// For each of `starts` (in order), the line where the block it is inside opened, if
+    /// it is inside one: read through the text from the top once.
+    fn open_at(&self, lines: &[String], starts: &[usize]) -> Vec<Option<usize>> {
+        let mut out = Vec::with_capacity(starts.len());
+        // The block open (its pair) and the line it opened on.
+        let mut inside: Option<(usize, usize)> = None;
+        let mut next = 0;
+        for (i, line) in lines.iter().enumerate() {
+            while starts.get(next) == Some(&i) {
+                out.push(inside.map(|(_, at)| at));
+                next += 1;
+            }
+            if next == starts.len() {
+                break;
+            }
+            let mut rest = line.as_str();
+            loop {
+                match inside {
+                    Some((p, _)) => match rest.find(self.pairs[p].1) {
+                        Some(at) => {
+                            rest = &rest[at + self.pairs[p].1.len()..];
+                            inside = None;
+                        }
+                        None => break,
+                    },
+                    None => {
+                        let first = self.pairs.iter().enumerate().filter_map(|(p, (o, _))| rest.find(o).map(|at| (at, p))).min();
+                        let comment = self.line_comment.and_then(|c| rest.find(c));
+                        match first {
+                            // (A line comment that is the opener's start: "--[[" in Lua.)
+                            Some((at, p)) if comment.is_none_or(|c| at <= c) => {
+                                rest = &rest[at + self.pairs[p].0.len()..];
+                                inside = Some((p, i));
+                            }
+                            _ => break,
+                        }
+                    }
+                }
+            }
+        }
+        // (Starts past the last line.)
+        out.resize(starts.len(), inside.map(|(_, at)| at));
+        out
+    }
+}
+
+/// A highlighted line's spans, within its first `body` bytes (its end left out).
+fn line_spans(ranges: &[(syntect::highlighting::Style, &str)], body: usize) -> Vec<Span> {
+    let mut at = 0;
+    let mut spans = Vec::new();
+    for (style, text) in ranges {
+        let (start, end) = (at, (at + text.len()).min(body));
+        at += text.len();
+        if start >= end {
+            continue;
+        }
+        let c = style.foreground;
+        spans.push(Span {
+            start,
+            end,
+            color: Color32::from_rgb(c.r, c.g, c.b),
+            bold: style.font_style.contains(FontStyle::BOLD),
+            italic: style.font_style.contains(FontStyle::ITALIC),
+        });
+    }
+    spans
 }
 
 /// Markdown split into blocks, with the code laid out once.
@@ -264,6 +375,59 @@ impl Rendered {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn code_is_colored_only_in_the_ranges_asked_as_if_read_from_the_top() {
+        let theme = syntect::highlighting::ThemeSet::load_defaults().themes["base16-ocean.dark"].clone();
+        let colored = |lines: &[String], lang: &str, ranges: &[std::ops::Range<usize>]| spans(lines, ranges, lang, &theme, Color32::WHITE).expect("known");
+        let whole = |lines: &[String]| 0..lines.len();
+        // Rust: a comment opened 200 lines above the stretch and closed inside it.
+        let mut rust: Vec<String> = (0..600).map(|i| format!("let x{i} = {i};")).collect();
+        rust[100] = "/* a long comment".into();
+        rust[302] = "*/".into();
+        // A line comment's "/*" opens nothing.
+        rust[400] = "// see /* here".into();
+        let all = colored(&rust, "rs", std::slice::from_ref(&whole(&rust)));
+        let some = colored(&rust, "rs", &[10..12, 300..305, 401..404]);
+        assert_eq!(some.len(), 600);
+        assert!(some[9].is_none() && some[12].is_none() && some[299].is_none() && some[305].is_none());
+        for i in [10, 11, 300, 301, 302, 303, 304, 401, 402, 403] {
+            assert_eq!(some[i], all[i], "rust line {i}");
+        }
+        assert_ne!(all[301], all[303], "the comment and the code after it differ");
+        // Python: a docstring opened far above; one closed on its own line opens nothing.
+        let mut py: Vec<String> = (0..500).map(|i| format!("x{i} = {i}")).collect();
+        py[20] = r#"y = """closed""""#.into();
+        py[50] = r#"    """A docstring"#.into();
+        py[401] = r#"    """"#.into();
+        let all = colored(&py, "py", std::slice::from_ref(&whole(&py)));
+        let some = colored(&py, "py", &[30..33, 399..404]);
+        for i in [30, 31, 32, 399, 400, 401, 402, 403] {
+            assert_eq!(some[i], all[i], "python line {i}");
+        }
+        // Lua's block comment starts like its line comment.
+        let mut lua: Vec<String> = (0..300).map(|i| format!("local x{i} = {i}")).collect();
+        lua[10] = "--[[ a block".into();
+        lua[250] = "]]".into();
+        let all = colored(&lua, "lua", std::slice::from_ref(&whole(&lua)));
+        let some = colored(&lua, "lua", &[200..202, 249..252]);
+        for i in [200, 201, 249, 250, 251] {
+            assert_eq!(some[i], all[i], "lua line {i}");
+        }
+        // An unknown language: none.
+        assert!(spans(&rust, std::slice::from_ref(&whole(&rust)), "no-such-language", &theme, Color32::WHITE).is_none());
+    }
+
+    #[test]
+    fn where_each_stretch_is_inside_a_block_is_found_in_the_text() {
+        let c = Blocks::of("Rust").unwrap();
+        let lines: Vec<String> = ["a", "/* b", "c", "d */ e", "f /* g */ h", "// /* i", "j"].iter().map(|l| l.to_string()).collect();
+        assert_eq!(c.open_at(&lines, &[0, 1, 2, 3, 4, 5, 6]), vec![None, None, Some(1), Some(1), None, None, None]);
+        let p = Blocks::of("Python").unwrap();
+        let lines: Vec<String> = ["'''x'''", r#"""""#, "''' still in", r#"""""#, "z"].iter().map(|l| l.to_string()).collect();
+        assert_eq!(p.open_at(&lines, &[1, 2, 3, 4]), vec![None, Some(1), Some(1), None]);
+        assert!(Blocks::of("Bourne Again Shell (bash)").is_none());
+    }
 
     fn code(lang: &str, text: &str) -> Block {
         Block::Code { lang: lang.into(), text: text.into() }
