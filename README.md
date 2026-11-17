@@ -25,7 +25,8 @@ optional coding agent panel.
 - **Markdown preview**, in place or beside the text, with tables and images.
 - **Terminals** at the bottom, with tabs and a split, built on alacritty's terminal:
   mouse selection, ⌘C/⌘V, copy on select, ⌘F search, a Vi mode and clickable file
-  links. A **Problems** list of your diagnostics sits beside them.
+  links. Buttons at the right of the tab strip show a **Problems** list of your
+  diagnostics and the **Git output**.
 - **⌃h/j/k/l moves between everything**: Neovim's windows, the side bar, the terminals and
   the agent panel.
 - **Sessions**: each folder's windows and panels come back when you open it again, and
@@ -123,7 +124,7 @@ Neovim's keys are all yours. Eshvi adds the Mac ones around them:
 | ⌘P / ⇧⌘P | files / commands |
 | ⌘B, ⇧⌘E | explorer: show or hide, focus |
 | ⌃⇧G | Source Control |
-| ⌘J | bottom panel |
+| ⌘J | bottom panel (the terminals) |
 | ⌃\` | terminal |
 | ⇧⌘M | Problems |
 | ⇧⌘U | Git output |
