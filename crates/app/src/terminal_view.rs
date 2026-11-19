@@ -1595,16 +1595,19 @@ mod tests {
     fn an_empty_paste_is_sent_as_empty_brackets() {
         let ctx = Context::default();
         let fonts = crate::fonts::install(&ctx, &crate::fonts::FontSpec::default_with_size(14.0), None, None, None, None);
-        let script = "printf 'ready\\033[?2004h'; stty raw -echo; cat -v";
-        let t = Terminal::spawn(SpawnOptions::new(vec!["/bin/sh".into(), "-c".into(), script.into()], term::Size { cols: 100, rows: 5, cell_w: 8, cell_h: 16 })).unwrap();
+        // (Raw first: a paste before it would be echoed and kept for a line.)
+        let script = "stty raw -echo; printf 'ready\\033[?2004h'; cat -v";
+        let t = Terminal::spawn(SpawnOptions::new(vec!["/bin/sh".into(), "-c".into(), script.into()], term::Size { cols: 40, rows: 5, cell_w: 8, cell_h: 16 })).unwrap();
         let mut view = TerminalView::new(t);
         frame(&ctx, &mut view, &fonts, vec![]);
         until("bracketed paste", || view.terminal().mode().contains(term::TermMode::BRACKETED_PASTE));
+        // (All the rows as one: what cat shows may wrap.)
+        let shown = |view: &TerminalView| rows_of(view.terminal()).concat();
         frame(&ctx, &mut view, &fonts, vec![Event::Paste(String::new())]);
-        until("the empty paste", || rows_of(view.terminal()).iter().any(|r| r.contains("^[[200~^[[201~")));
+        until("the empty paste", || shown(&view).contains("^[[200~^[[201~"));
         // A dropped file's path, the same way.
         view.paste("/tmp/a\\ b.png");
-        until("the path", || rows_of(view.terminal()).iter().any(|r| r.contains("^[[200~/tmp/a\\ b.png^[[201~")));
+        until("the path", || shown(&view).contains("^[[200~/tmp/a\\ b.png^[[201~"));
     }
 
     /// The program takes the mouse: a click is reported, and Shift selects anyway.
