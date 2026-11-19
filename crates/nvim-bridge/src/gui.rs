@@ -590,6 +590,17 @@ pub struct PreviewWin {
     pub side: bool,
     /// The file (for its links to files beside it).
     pub path: String,
+    /// The search highlighted in the buffer ('hlsearch'), if any.
+    pub search: Option<PreviewSearch>,
+}
+
+/// A search to mark in a preview: the different texts it matches in the
+/// buffer, and the Search group's colors (0xRRGGBB).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PreviewSearch {
+    pub texts: Vec<String>,
+    pub bg: Option<u32>,
+    pub fg: Option<u32>,
 }
 
 /// One diagnostic of the native Problems list. Lines and columns count from 1.
@@ -997,6 +1008,11 @@ pub fn parse(name: &str, args: &[Value]) -> Option<GuiEvent> {
                         line: get(w, "line").and_then(Value::as_u64).unwrap_or(1) as usize,
                         side: get(w, "side").and_then(Value::as_bool).unwrap_or(false),
                         path: string(w, "path"),
+                        search: get(w, "search").filter(|s| s.is_map()).map(|s| PreviewSearch {
+                            texts: list(s, "texts").iter().filter_map(|t| t.as_str().map(str::to_owned)).collect(),
+                            bg: get(s, "bg").and_then(Value::as_u64).map(|c| c as u32),
+                            fg: get(s, "fg").and_then(Value::as_u64).map(|c| c as u32),
+                        }),
                     })
                 })
                 .collect(),

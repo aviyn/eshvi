@@ -343,9 +343,43 @@ fn open_lua_manual_links(markdown: &str) -> String {
     out
 }
 
+/// Links to nothing defined: Rust's intra-doc links (``[`Acquire`]``,
+/// `[Vec::new][]`), which rust-analyzer leaves in completion docs, would show
+/// with their brackets. Their text alone instead.
+fn unlink_undefined_references(markdown: &str) -> String {
+    use pulldown_cmark::{BrokenLink, LinkType, Options, Parser};
+    let mut spans = Vec::new();
+    let callback = |link: BrokenLink| {
+        spans.push((link.span, link.link_type));
+        None
+    };
+    Parser::new_with_broken_link_callback(markdown, Options::ENABLE_TABLES, Some(callback)).for_each(drop);
+    let mut out = String::with_capacity(markdown.len());
+    let mut at = 0;
+    for (span, kind) in spans {
+        let source = &markdown[span.clone()];
+        // `[text]`, `[text][]` (the span leaves its `[]` out) or `[text][label]`.
+        let inner = source.strip_prefix('[');
+        let (text, end) = match kind {
+            LinkType::Collapsed | LinkType::CollapsedUnknown => {
+                (inner.and_then(|t| t.strip_suffix(']')), span.end + if markdown[span.end..].starts_with("[]") { 2 } else { 0 })
+            }
+            LinkType::Shortcut | LinkType::ShortcutUnknown => (inner.and_then(|t| t.strip_suffix(']')), span.end),
+            _ => (inner.and_then(|t| t.rfind("][").map(|end| &t[..end])), span.end),
+        };
+        if let (Some(text), true) = (text, span.start >= at) {
+            out.push_str(&markdown[at..span.start]);
+            out.push_str(text);
+            at = end;
+        }
+    }
+    out.push_str(&markdown[at..]);
+    out
+}
+
 impl Rendered {
     pub fn new(markdown: &str) -> Self {
-        let blocks = split(&open_lua_manual_links(markdown));
+        let blocks = split(&unlink_undefined_references(&open_lua_manual_links(markdown)));
         Self { code: vec![None; blocks.len()], blocks, cache: CommonMarkCache::default() }
     }
 
@@ -375,6 +409,17 @@ impl Rendered {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn links_to_nothing_defined_show_their_text_alone() {
+        let doc = "With [`Acquire`] (or stronger) and [Relaxed][] or [it][SeqCst], see [docs].\n\n\
+                   `[in code]` and [a link](https://e.com).\n\n```rust\nlet a = [x];\n```\n\n[docs]: https://doc.rust-lang.org\n";
+        assert_eq!(
+            unlink_undefined_references(doc),
+            "With `Acquire` (or stronger) and Relaxed or it, see [docs].\n\n\
+             `[in code]` and [a link](https://e.com).\n\n```rust\nlet a = [x];\n```\n\n[docs]: https://doc.rust-lang.org\n"
+        );
+    }
 
     #[test]
     fn code_is_colored_only_in_the_ranges_asked_as_if_read_from_the_top() {

@@ -294,7 +294,7 @@ fn a_previews_scroll_picks_the_heading_at_its_top() {
     let mut t = tree(headings.clone());
     t.expand = 0;
     let mut previews = crate::preview::Previews::default();
-    previews.set_wins(vec![PreviewWin { win: 1, buf: 7, line: 1, side: false, path: "/x/n.md".into() }]);
+    previews.set_wins(vec![PreviewWin { win: 1, buf: 7, line: 1, side: false, path: "/x/n.md".into(), search: None }]);
     previews.set_text(7, &md);
     let fonts = crate::fonts::install(&egui::Context::default(), &crate::fonts::FontSpec::default_with_size(13.0), None, None, None, None);
     let chrome = crate::style::Chrome::new(Color32::BLACK, Color32::WHITE, Color32::BLUE);

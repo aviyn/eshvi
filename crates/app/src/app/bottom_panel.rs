@@ -563,6 +563,17 @@ impl VimApp {
         Some(Rect::from_x_y_ranges(strip.x_range(), strip.min.y - 3.0..=strip.min.y + 4.0))
     }
 
+    /// Whether a press at `pos` grabs the panel's top edge: the band along
+    /// it (a few points of it are above the panel), or the native status
+    /// bar right above (not its branch or problem counts, which are buttons).
+    pub(super) fn grabs_panel_edge(&self, pos: Pos2) -> bool {
+        let Some(zone) = self.bottom_resize_zone() else { return false };
+        let on_bar = self.native_bar_rect.is_some_and(|bar| bar.contains(pos) && (zone.min.y - bar.max.y).abs() <= 4.0)
+            && !self.branch_rect.is_some_and(|r| r.contains(pos))
+            && !self.problems_rect.is_some_and(|r| r.contains(pos));
+        zone.contains(pos) || on_bar
+    }
+
     /// The panel's height in points now.
     pub(super) fn bottom_height(&self, available: f32) -> f32 {
         let row = self.renderer.metrics().height;
@@ -1143,6 +1154,14 @@ impl VimApp {
                 true
             }
             Event::Text(_) | Event::Ime(_) | Event::Paste(_) | Event::Copy | Event::Cut if self.focus.in_panel() && !self.filter_has_keyboard(ctx) => true,
+            Event::PointerButton { pos, pressed: true, button: PointerButton::Primary, .. }
+                if self.grabs_panel_edge(*pos) && !self.over_popup(ctx, *pos) =>
+            {
+                self.bottom.pressed = true;
+                let height = self.bottom.rect.map_or(0.0, |r| r.height());
+                self.bottom.resize = Some((pos.y, height));
+                true
+            }
             Event::PointerButton { pos, pressed: true, button, .. } if self.over_bottom_panel(*pos) && !self.over_popup(ctx, *pos) => {
                 self.bottom.pressed = true;
                 self.panel_press(ctx, *pos, *button);

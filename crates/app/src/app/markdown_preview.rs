@@ -69,13 +69,26 @@ impl VimApp {
         style.visuals.widgets.noninteractive.fg_stroke.color = fg;
         style.visuals.widgets.inactive.fg_stroke.color = fg;
         style.visuals.widgets.active.fg_stroke.color = crate::popup::mix(fg, egui::Color32::WHITE, 0.35);
+        // While Neovim has the mouse (a separator dragged: its reach is a few
+        // pixels into the preview, and the drag crosses it), no text is
+        // selected under it.
+        if self.drag.is_some() {
+            style.interaction.selectable_labels = false;
+        }
         let syntax = self.lsp.syntax();
         // (egui scrolls what is under the pointer, whatever is drawn over it.)
         let covered = ui.ctx().input(|i| i.pointer.latest_pos()).is_some_and(|p| rect.contains(p) && self.top_window_at(p).is_some_and(|top| top != w.win));
         let scrolls = !covered;
         let fonts = if size == self.grid_fonts.size { self.grid_fonts.clone() } else { self.grid_fonts.with_size(size) };
         let chrome = crate::style::Chrome::from_editor(&self.editor);
+        let first_shape = ui.ctx().graphics(|g| g.get(painter.layer_id()).map_or(0, |l| l.all_entries().len()));
         self.preview.show(&mut child, w.win, syntax.as_ref(), &fonts, fg, scrolls, &chrome, &mut self.icons);
+        // The search, marked where its matches are in the page.
+        if let Some(search) = self.preview.win(w.win).and_then(|p| p.search.clone()) {
+            let bg = search.bg.map_or(crate::popup::mix(bg, egui::Color32::YELLOW, 0.5), rgb);
+            let marks = crate::preview::search_marks(ui.ctx(), painter.layer_id(), first_shape, &search.texts, bg, search.fg.map(rgb));
+            painter.with_clip_rect(rect.intersect(painter.clip_rect())).extend(marks);
+        }
         self.follow_preview_scroll(ui.ctx());
         self.preview_rects.push((rect, w.win));
         // Links: egui opens URLs; a file link (relative, or file:) opens

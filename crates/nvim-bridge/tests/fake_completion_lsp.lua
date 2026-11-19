@@ -12,6 +12,8 @@ local items = {
     detail = 'function () end',
   },
   { label = 'rep', kind = 3 },
+  -- First in the server's order; "for" matches it only fuzzily.
+  { label = 'transform', kind = 3, sortText = '0' },
 }
 
 local function server(dispatchers)

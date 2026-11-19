@@ -155,6 +155,9 @@ pub struct ExplorerView {
     /// Where the Outline's title bar was drawn.
     #[cfg(test)]
     outline_header: Rect,
+    /// Where the selected file's row was drawn (NOTHING: out of sight).
+    #[cfg(test)]
+    selected_row: Rect,
 }
 
 /// Indent per level and icon size, relative to the font size (12pt and
@@ -208,6 +211,8 @@ impl ExplorerView {
             outline_follow: true,
             #[cfg(test)]
             outline_header: Rect::NOTHING,
+            #[cfg(test)]
+            selected_row: Rect::NOTHING,
         }
     }
 
@@ -930,6 +935,10 @@ impl ExplorerView {
             _ => rows.iter().position(|r| r.path == e.dir).map(|i| (i + 1, rows[i].depth + 1)),
         });
         let scroll_to = std::mem::take(&mut self.scroll_to_selected);
+        #[cfg(test)]
+        {
+            self.selected_row = Rect::NOTHING;
+        }
         // Drop targets (row, its folder) for files dragged in from Finder.
         let mut targets: Vec<(Rect, PathBuf)> = Vec::new();
         let dragging_files = ui.ctx().input(|i| !i.raw.hovered_files.is_empty());
@@ -967,10 +976,18 @@ impl ExplorerView {
                     actions.extend(self.move_into(&paths, &dir));
                 }
                 resp.context_menu(|ui| self.menu(ui, Some(row), &mut actions));
+                let selected = self.is_selected(&row.path);
+                // (Before the check below: a row out of sight is the one to scroll to.)
+                if selected && scroll_to {
+                    resp.scroll_to_me(None);
+                }
                 if !ui.is_rect_visible(rect) {
                     continue;
                 }
-                let selected = self.is_selected(&row.path);
+                #[cfg(test)]
+                if selected {
+                    self.selected_row = rect;
+                }
                 let drop_here = resp.dnd_hover_payload::<Vec<PathBuf>>().is_some()
                     || (dragging_files && drop_pos.is_some_and(|p| rect.contains(p)));
                 let p = ui.painter();
@@ -982,9 +999,6 @@ impl ExplorerView {
                 // only in the badges after it.
                 let name_end = Self::paint_decoration(ui, row, rect, &font, decos, deco_colors);
                 self.paint_row(ui, row, rect, name_end, &font, colors, ppp);
-                if selected && scroll_to {
-                    resp.scroll_to_me(None);
-                }
                 // Cmd-click adds or removes a row; Shift-click selects the
                 // rows from the last one clicked.
                 let mods = ui.input(|i| i.modifiers);
@@ -1886,6 +1900,21 @@ mod tests {
 
     fn click(h: &mut Harness<'static, Pane>, pos: Pos2) {
         mouse(h, pos, egui::PointerButton::Primary);
+    }
+
+    /// A file opened in Neovim (`:e`) far down the list is scrolled to.
+    #[test]
+    fn a_file_switched_to_out_of_sight_is_scrolled_into_view() {
+        let mut h = pane("dark", 280.0, 420.0, 40);
+        h.run();
+        assert_eq!(h.state().view.selected_row, Rect::NOTHING);
+        let file = h.state().dir.join("project/file_39.rs");
+        let ctx = h.ctx.clone();
+        h.state_mut().view.set_active(file, &ctx);
+        h.run();
+        h.run();
+        let row = h.state().view.selected_row;
+        assert!(row.is_positive() && row.max.y <= outline_top(&h) + 0.5, "row {row:?}, list ends at {}", outline_top(&h));
     }
 
     #[test]

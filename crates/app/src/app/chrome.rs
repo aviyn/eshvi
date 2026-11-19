@@ -5,6 +5,7 @@ use super::*;
 impl VimApp {
     pub(super) fn paint_statuslines(&mut self, painter: &egui::Painter, cell_pos: &dyn Fn(i64, i64) -> Pos2, screen: Rect) {
         self.branch_rect = None;
+        self.native_bar_rect = None;
         if !self.statusline_gui && !self.sidebar_hides_statusline {
             return;
         }

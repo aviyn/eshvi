@@ -212,13 +212,18 @@ impl VimApp {
             })
     }
 
+    /// The default grid's row of the lowest status line(s).
+    pub(super) fn last_status_row(&self) -> Option<usize> {
+        let global = self.laststatus == 3 || self.native_status();
+        self.editor.status_segments(global).iter().map(|s| s.row).max()
+    }
+
     /// Where the status bar starts (the lowest one's top), for the command
     /// line at the bottom to sit on; `None` with no bar (the editor area's
     /// bottom then). A bar on the last row is at the area's bottom edge.
     pub(super) fn status_bar_top(&self, area: Rect, m: crate::renderer::CellMetrics) -> Option<f32> {
         let rows = self.editor.grids.get(&DEFAULT_GRID)?.height();
-        let global = self.laststatus == 3 || self.native_status();
-        let row = self.editor.status_segments(global).iter().map(|s| s.row).max()?;
+        let row = self.last_status_row()?;
         Some(if row + 1 == rows { area.max.y - m.height } else { self.origin.y + row as f32 * m.height })
     }
 

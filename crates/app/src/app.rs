@@ -176,6 +176,9 @@ pub struct VimApp {
     status_view: Option<grid::Viewport>,
     /// The branch in the native status bar (clickable), from the last frame.
     branch_rect: Option<Rect>,
+    /// The native status bar, from the last frame: with the bottom panel
+    /// shown, a drag of it resizes the panel.
+    native_bar_rect: Option<Rect>,
     /// Fixed bar colors, or `None` for the theme's statusline colors.
     status_colors: StatusColorMode,
     status_font_size: f32,
@@ -387,6 +390,9 @@ struct Drag {
     /// grabbed from the pixels beside its cell (`separator_grab`) moves with
     /// the pointer as if grabbed on its cell's middle, not a column off.
     shift: Vec2,
+    /// Begun on the last status line: Neovim isn't sent its moves (a drag of
+    /// that line changes 'cmdheight': the status bar moved off the panel).
+    still: bool,
 }
 
 impl VimApp {
@@ -532,6 +538,7 @@ impl VimApp {
             status: Default::default(),
             status_view: None,
             branch_rect: None,
+            native_bar_rect: None,
             status_colors: config.statusline.resolve_colors(),
             status_font_size: fonts::status_base_size(config.statusline.font_size, ui_font.as_ref()),
             status_font_base: fonts::status_base_size(config.statusline.font_size, ui_font.as_ref()),
@@ -1281,6 +1288,7 @@ impl VimApp {
         self.cmdline_layout = cmdline.clone();
         if let Some(pm) = &self.editor.popupmenu {
             let syntax = self.lsp.syntax();
+            self.pum.bottom = status_top;
             let (r, action) =
                 self.pum.show(&ctx, &self.editor, pm, &self.grid_fonts, m, rect, cmdline.as_ref(), syntax.as_deref());
             self.popup_rects.extend(r);

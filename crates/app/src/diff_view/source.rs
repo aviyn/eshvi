@@ -587,7 +587,8 @@ mod tests {
         }
         got.sort();
         assert_eq!(got, [0, 1]);
-        assert!(rx.try_iter().count() >= 1, "woken");
+        // (It wakes the app right after sending what it did: not yet, maybe.)
+        assert!(rx.recv_timeout(std::time::Duration::from_secs(10)).is_ok(), "woken");
     }
 
     fn coloring() -> Coloring {

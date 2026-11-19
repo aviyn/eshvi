@@ -32,6 +32,26 @@ end
 -- positions; without a visual selection, the cursor (an empty selection).
 local function selection()
   local buf = vim.api.nvim_get_current_buf()
+  -- A Markdown preview beside its file (a scratch window): the file it
+  -- shows, at the line of the window showing that file.
+  local of = vim.w.eshvi_preview_of
+  if of and is_file(of) then
+    local line = 0
+    for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      if vim.api.nvim_win_get_buf(w) == of and not vim.w[w].eshvi_preview_of then
+        line = vim.api.nvim_win_get_cursor(w)[1] - 1
+        break
+      end
+    end
+    local path = path_of(of)
+    local pos = { line = line, character = 0 }
+    return {
+      filePath = path,
+      fileUrl = vim.uri_from_fname(path),
+      text = '',
+      selection = { start = pos, ['end'] = pos, isEmpty = true },
+    }
+  end
   if not is_file(buf) then
     return nil
   end

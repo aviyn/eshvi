@@ -57,6 +57,42 @@ local function send_text(buf)
   vim.rpcnotify(chan, 'gui_preview_text', { buf = buf, text = text })
 end
 
+-- The search highlighted in `buf` ('hlsearch', not :nohlsearch'd): each
+-- different text it matches there (the GUI marks them in the rendered page;
+-- Vim's pattern isn't translated) and the Search group's colors.
+local function search_of(buf)
+  if vim.v.hlsearch ~= 1 or not vim.o.hlsearch then
+    return nil
+  end
+  local pattern = vim.fn.getreg('/')
+  if pattern == '' then
+    return nil
+  end
+  -- (matchbufline() follows 'ignorecase', not 'smartcase'.)
+  if vim.o.ignorecase and vim.o.smartcase and not pattern:find('\\[cC]') and pattern:gsub('\\.', ''):find('%u') then
+    pattern = '\\C' .. pattern
+  end
+  local ok, found = pcall(vim.fn.matchbufline, buf, pattern, 1, '$')
+  if not ok then
+    return nil
+  end
+  local seen, texts = {}, {}
+  for _, m in ipairs(found) do
+    if m.text ~= '' and not seen[m.text] then
+      seen[m.text] = true
+      texts[#texts + 1] = m.text
+      if #texts >= 100 then
+        break
+      end
+    end
+  end
+  if #texts == 0 then
+    return nil
+  end
+  local hl = vim.api.nvim_get_hl(0, { name = 'Search', link = false })
+  return { texts = texts, bg = hl.bg, fg = hl.fg }
+end
+
 local last_report = nil
 local function report()
   local wins = {}
@@ -65,7 +101,7 @@ local function report()
     if buf and vim.api.nvim_buf_is_valid(buf) then
       local line = side and source_line(buf) or vim.api.nvim_win_get_cursor(w)[1]
       local path = vim.api.nvim_buf_get_name(buf)
-      table.insert(wins, { win = w, buf = buf, line = line, side = side, path = path })
+      table.insert(wins, { win = w, buf = buf, line = line, side = side, path = path, search = search_of(buf) })
       send_text(buf)
     end
   end
@@ -215,6 +251,17 @@ local function later()
 end
 vim.api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI', 'CursorMoved', 'CursorMovedI', 'BufWritePost' }, {
   group = group,
+  callback = later,
+})
+-- A search, or :nohlsearch (which has no event of its own; it runs after
+-- the command line closes: `later` waits a little).
+vim.api.nvim_create_autocmd({ 'CmdlineLeave', 'ColorScheme' }, {
+  group = group,
+  callback = later,
+})
+vim.api.nvim_create_autocmd('OptionSet', {
+  group = group,
+  pattern = 'hlsearch',
   callback = later,
 })
 vim.api.nvim_create_autocmd({ 'WinNew', 'WinClosed', 'WinEnter', 'TabEnter', 'BufWinEnter' }, {

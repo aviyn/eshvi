@@ -83,8 +83,12 @@ local DEFAULT_SOURCES = PATH_SOURCE .. ',.^5,w^5,b^5'
 local LSP_SOURCES = PATH_SOURCE .. ',o^20,.^3,w^3,b^3'
 
 -- Paths come first, then the items the language server gave: Neovim puts the
--- buffer's words, found sooner, ahead of them. Within each: the server's
--- order (its sortText), else alphabetical.
+-- buffer's words, found sooner, ahead of them. Within each: the items that
+-- start with the word typed (with its case, then without), then the other
+-- (fuzzy) matches; each in the server's order (its sortText), else
+-- alphabetical. ('nosort' keeps this order while typing narrows the menu; the
+-- server's order alone put rust-analyzer's `split_inclusive` above `iter`
+-- for "ite".)
 local function rank(item)
   if vim.tbl_get(item, 'user_data', 'eshvi_path') then
     return 0
@@ -92,13 +96,40 @@ local function rank(item)
   return vim.tbl_get(item, 'user_data', 'nvim', 'lsp', 'completion_item') and 1 or 2
 end
 
+-- The word before the cursor, once per sort (cleared after it).
+local typed
+local function typed_word()
+  if not typed then
+    local col = vim.api.nvim_win_get_cursor(0)[2]
+    typed = vim.fn.matchstr(vim.api.nvim_get_current_line():sub(1, col), [[\k*$]])
+    vim.schedule(function()
+      typed = nil
+    end)
+  end
+  return typed
+end
+
+-- 0: starts with the word typed, 1: so without its case, 2: neither.
+local function closeness(text, word)
+  if word == '' or vim.startswith(text, word) then
+    return 0
+  end
+  return vim.startswith(text:lower(), word:lower()) and 1 or 2
+end
+
 local function lsp_first(a, b)
   local ra, rb = rank(a), rank(b)
   if ra ~= rb then
     return ra < rb
+  end
+  local ia = vim.tbl_get(a, 'user_data', 'nvim', 'lsp', 'completion_item')
+  local ib = vim.tbl_get(b, 'user_data', 'nvim', 'lsp', 'completion_item')
+  local word = typed_word()
+  local ca = closeness(ia and (ia.filterText or ia.label) or a.word, word)
+  local cb = closeness(ib and (ib.filterText or ib.label) or b.word, word)
+  if ca ~= cb then
+    return ca < cb
   elseif ra == 1 then
-    local ia = a.user_data.nvim.lsp.completion_item
-    local ib = b.user_data.nvim.lsp.completion_item
     return (ia.sortText or ia.label) < (ib.sortText or ib.label)
   end
   return a.word < b.word
@@ -114,23 +145,16 @@ local function send_doc(selected, contents)
   vim.rpcnotify(chan, 'gui_pum_doc', { selected = selected, contents = contents })
 end
 
--- The selected item and its index in the menu. (complete_info's `selected`
--- counts all candidates, the menu shows only those matching what's typed.)
+-- The selected item and its index in the menu. (With `matches` asked for,
+-- complete_info's `selected` is an index into them, the items shown; without,
+-- into all the candidates, filtered out ones too.)
 local function selected_item()
-  local info = vim.fn.complete_info({ 'selected', 'items', 'matches' })
-  if info.selected == nil or info.selected < 0 or not info.items[info.selected + 1] then
+  local info = vim.fn.complete_info({ 'selected', 'matches' })
+  local item = (info.selected or -1) >= 0 and info.matches and info.matches[info.selected + 1]
+  if not item then
     return nil, -1
   end
-  local function shown(item)
-    return item.match ~= false and item.match ~= 0
-  end
-  local index = -1
-  for i = 1, info.selected + 1 do
-    if shown(info.items[i]) then
-      index = index + 1
-    end
-  end
-  return shown(info.items[info.selected + 1]) and info.items[info.selected + 1] or nil, index
+  return item, info.selected
 end
 
 -- Markdown for `item` (a completion item of Vim's), calling `done` with it.
@@ -298,6 +322,58 @@ local function cmdline_arrow(key, move)
   end
 end
 
+-- Sorting as the menu narrows -------------------------------------------------
+
+-- The language server's list is sorted once, when it answers; typing then only
+-- narrows it, in that order. So on each change while the menu is up it's
+-- filtered again from the whole list, sorted (what starts with the word typed
+-- first) and given back to complete() if the order shown differs. Not after
+-- <C-n>, <Tab> and the like: the text they put in isn't typed.
+--
+-- The whole list and where it starts: from the last complete() call that
+-- wasn't ours (Neovim's LSP completion doesn't say).
+local whole, whole_start, resorting = nil, nil, false
+do
+  local complete = vim.fn.complete
+  vim.fn.complete = function(col, matches)
+    if not resorting then
+      whole, whole_start = matches, { vim.api.nvim_win_get_cursor(0)[1], col }
+    end
+    return complete(col, matches)
+  end
+end
+
+local function resort()
+  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+  if moved or not whole or whole_start[1] ~= row or whole_start[2] > col + 1 then
+    return
+  end
+  local lsp = false
+  for _, item in ipairs(whole) do
+    if rank(item) == 0 then
+      return -- (Paths start elsewhere than the server's words.)
+    end
+    lsp = lsp or rank(item) == 1
+  end
+  if not lsp then
+    return
+  end
+  local typed = vim.api.nvim_get_current_line():sub(whole_start[2], col)
+  local list = typed == '' and vim.list_slice(whole) or vim.fn.matchfuzzy(whole, typed, { key = 'word' })
+  table.sort(list, lsp_first)
+  local function words(items)
+    return table.concat(vim.tbl_map(function(item)
+      return item.word
+    end, items), '\n')
+  end
+  if #list == 0 or words(list) == words(vim.fn.complete_info({ 'matches' }).matches or {}) then
+    return
+  end
+  resorting = true
+  pcall(vim.fn.complete, whole_start[2], list)
+  resorting = false
+end
+
 -- Setup ------------------------------------------------------------------------
 
 local function setup()
@@ -380,6 +456,7 @@ local function setup()
     )
   end)
   on({ 'CompleteDone', 'InsertLeave' }, close_doc)
+  on('TextChangedP', resort)
   -- Ctrl-Space: the menu showing: its docs, on or off; else ask the
   -- 'omnifunc' (the language server) for items. Not if the config has its own.
   if vim.fn.maparg('<C-Space>', 'i') == '' then

@@ -461,9 +461,89 @@ fn image_base(file: &str) -> String {
     format!("file://{}/", dir.trim_end_matches('/'))
 }
 
+/// Marks for `texts` (a search's matches) wherever the text drawn on `layer`
+/// since its `from`th shape has them: a box in `bg` behind each, and its
+/// text again on top in `fg` (the Search group's colors: the page's text
+/// color may not read on its background). A match that wraps gets a box on
+/// each row, its text left as it is.
+pub fn search_marks(ctx: &egui::Context, layer: egui::LayerId, from: usize, texts: &[String], bg: Color32, fg: Option<Color32>) -> Vec<egui::Shape> {
+    use egui::text::CCursor;
+    let mut boxes = Vec::new();
+    let mut words = Vec::new();
+    ctx.graphics(|g| {
+        let Some(list) = g.get(layer) else { return };
+        for entry in list.all_entries().skip(from) {
+            let egui::Shape::Text(t) = &entry.shape else { continue };
+            let text = t.galley.text();
+            for needle in texts.iter().filter(|n| !n.is_empty()) {
+                for (at, _) in text.match_indices(needle.as_str()) {
+                    let start = text[..at].chars().count();
+                    let end = start + needle.chars().count();
+                    let pos = |c: usize| t.galley.pos_from_cursor(CCursor::new(c));
+                    // One box per row the match is on.
+                    let mut rows: Vec<Rect> = Vec::new();
+                    for c in start..end {
+                        let (here, next) = (pos(c), pos(c + 1));
+                        let right = if (next.min.y - here.min.y).abs() < 0.5 {
+                            next.min.x
+                        } else {
+                            t.galley.rows.iter().find(|r| (r.pos.y - here.min.y).abs() < 0.5).map_or(here.max.x, |r| r.rect().max.x)
+                        };
+                        let cell = Rect::from_min_max(here.min, Pos2::new(right, here.max.y));
+                        match rows.last_mut() {
+                            Some(last) if (last.min.y - cell.min.y).abs() < 0.5 => *last = last.union(cell),
+                            _ => rows.push(cell),
+                        }
+                    }
+                    let clip = entry.clip_rect;
+                    boxes.extend(rows.iter().map(|r| r.translate(t.pos.to_vec2())).filter(|r| clip.intersects(*r)));
+                    // The text again, in the Search color, if on one row.
+                    if let (Some(fg), [row]) = (fg, rows.as_slice()) {
+                        let section = t.galley.job.sections.iter().find(|s| s.byte_range.start.0 <= at && at < s.byte_range.end.0);
+                        if let Some(font) = section.map(|s| s.format.font_id.clone()) {
+                            words.push((row.translate(t.pos.to_vec2()).min, needle.clone(), font, fg, clip));
+                        }
+                    }
+                }
+            }
+        }
+    });
+    let mut shapes: Vec<egui::Shape> = boxes.into_iter().map(|r| egui::Shape::rect_filled(r.expand2(Vec2::new(1.0, 0.0)), style::RADIUS, bg)).collect();
+    for (at, word, font, fg, clip) in words {
+        let galley = ctx.fonts_mut(|f| f.layout_no_wrap(word, font, fg));
+        if clip.intersects(Rect::from_min_size(at, galley.size())) {
+            shapes.push(egui::Shape::galley(at, galley, fg));
+        }
+    }
+    shapes
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_search_is_marked_where_the_drawn_text_has_it() {
+        let ctx = egui::Context::default();
+        let mut marks = Vec::new();
+        let mut label = Rect::NOTHING;
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            let layer = ui.layer_id();
+            let from = ui.ctx().graphics(|g| g.get(layer).map_or(0, |l| l.all_entries().len()));
+            label = ui.label("say hello and hello again").rect;
+            marks = search_marks(ui.ctx(), layer, from, &["hello".to_owned(), "absent".to_owned()], Color32::YELLOW, Some(Color32::BLACK));
+        });
+        out.textures_delta.clear();
+        let boxes: Vec<Rect> = marks.iter().filter_map(|s| if let egui::Shape::Rect(r) = s { Some(r.rect) } else { None }).collect();
+        let words: Vec<String> = marks.iter().filter_map(|s| if let egui::Shape::Text(t) = s { Some(t.galley.text().to_owned()) } else { None }).collect();
+        assert_eq!(boxes.len(), 2, "{marks:?}");
+        assert_eq!(words, ["hello", "hello"]);
+        assert!(boxes[0].max.x < boxes[1].min.x, "{boxes:?}");
+        for b in &boxes {
+            assert!(label.expand(1.5).contains_rect(*b), "{b:?} in {label:?}");
+            assert!(b.width() > 10.0, "{b:?}");
+        }
+    }
 
     /// A code block's copy button: a press copies the block, and the icon is
     /// a check for a second.
@@ -471,7 +551,7 @@ mod tests {
     fn the_copy_button_copies_the_block() {
         let md = "Intro\n\n```rust\nfn main() {}\nlet x = 1;\n```\n";
         let mut previews = Previews::default();
-        previews.set_wins(vec![PreviewWin { win: 1, buf: 7, line: 1, side: false, path: "/x/n.md".into() }]);
+        previews.set_wins(vec![PreviewWin { win: 1, buf: 7, line: 1, side: false, path: "/x/n.md".into(), search: None }]);
         previews.set_text(7, md);
         let chrome = Chrome::new(Color32::from_rgb(0x28, 0x2c, 0x34), Color32::from_rgb(0xab, 0xb2, 0xbf), Color32::from_rgb(0x4f, 0xa6, 0xed));
         let mut icons = IconTextures::default();

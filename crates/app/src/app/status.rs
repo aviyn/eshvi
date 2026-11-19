@@ -434,6 +434,7 @@ impl VimApp {
             position: view.map_or_else(String::new, |v| position_text(v.curline + 1, v.curcol + 1, &self.status)),
         };
         let hits = paint(painter, bar_rect, &bar, &pal, &font, &mut self.icons);
+        self.native_bar_rect = Some(bar_rect);
         self.branch_rect = hits.branch;
         self.problems_rect = hits.counts;
         if hits.right_start - hits.left_end > 100.0 {

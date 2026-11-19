@@ -44,6 +44,8 @@ optional coding agent panel.
 
 ![Source Control, a Rust file, and two terminals in the bottom panel](docs/screenshots/terminal.png)
 
+![Completion in a Rust file, with rust-analyzer's documentation beside the menu](docs/screenshots/completion.png)
+
 ## Install
 
 Eshvi runs on macOS 11 or later. Linux and Windows are coming.

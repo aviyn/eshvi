@@ -32,6 +32,27 @@ else
   vim.api.nvim_create_autocmd('VimEnter', { once = true, callback = setup_clipboard })
 end
 
+-- ⌘C and ⌘X with no Visual selection (Edit › Copy is off then, so the key reaches the
+-- window, and the GUI sends <D-c>, <D-x>): nothing. Unmapped, Neovim took <D-c> for `c`
+-- (an operator waiting for its motion; which-key opened) and typed "<D-c>" in Insert mode.
+-- (Text selected in a Markdown preview is copied by the GUI.) Not where the user's config
+-- maps them.
+local function quiet_cmd_keys()
+  for _, key in ipairs({ '<D-c>', '<D-x>' }) do
+    for _, mode in ipairs({ 'n', 'o', 'i', 'c' }) do
+      if vim.fn.maparg(key, mode) == '' then
+        vim.keymap.set(mode, key, '<Nop>', { desc = 'eshvi: nothing to copy' })
+      end
+    end
+  end
+end
+
+if vim.v.vim_did_enter == 1 then
+  quiet_cmd_keys()
+else
+  vim.api.nvim_create_autocmd('VimEnter', { once = true, callback = quiet_cmd_keys })
+end
+
 -- Copy on select (`[neovim] copy_on_select`), as in the GUI's terminals: a Visual (or
 -- Select) selection the mouse made goes on the clipboard when the button is let go (a
 -- drag, a double or triple click). The GUI copies the text (`gui_copy`); it isn't a yank,

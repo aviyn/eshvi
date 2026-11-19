@@ -1307,6 +1307,20 @@ fn claude_code_connects_and_gets_selection_mentions_and_diagnostics() {
         assert!(m["params"]["filePath"].as_str().unwrap().ends_with("lib.rs"));
         assert_eq!((m["params"]["lineStart"].as_i64(), m["params"]["lineEnd"].as_i64()), (Some(1), Some(2)));
 
+        // A Markdown preview beside its file, clicked into (a scratch
+        // window): the file it shows, at its line (from the start).
+        let notes = work.join("notes.md");
+        std::fs::write(&notes, "# T\n\ntext here\n").unwrap();
+        bridge.send(UiCommand::Input(format!("<C-\\><C-n><C-w>h:e {}<CR>G$:EshviPreview side<CR><C-w>l", notes.display())));
+        let sel = next_matching(&mut ws, |v| {
+            v["method"] == "selection_changed"
+                && v["params"]["filePath"].as_str().is_some_and(|p| p.ends_with("notes.md"))
+                && v["params"]["selection"]["start"] == json!({ "line": 2, "character": 0 })
+        })
+        .await;
+        assert_eq!(sel["params"]["text"], "");
+        bridge.send(UiCommand::Input(format!("<C-w>c:e {}<CR>", file.display())));
+
         // Diagnostics, as Claude asks for them around its edits.
         let lua = "vim.diagnostic.set(vim.api.nvim_create_namespace('t'), vim.fn.bufnr('lib.rs'), \
                    {{ lnum = 0, col = 3, severity = vim.diagnostic.severity.ERROR, message = 'boom', source = 'test' }})";
@@ -1877,6 +1891,14 @@ fn markdown_previews_are_reported_and_follow_the_file() {
     // The cursor moves: so does the line.
     bridge.send(UiCommand::Input("gg".into()));
     previews(&bridge, &mut ed, &|w| w.len() == 1 && w[0].line == 1);
+    // A search: what it matches, to be marked in the page; :nohlsearch
+    // takes it away.
+    bridge.send(UiCommand::Input("/T\\w*<CR>".into()));
+    let w = previews(&bridge, &mut ed, &|w| w.len() == 1 && w[0].search.is_some());
+    assert_eq!(w[0].search.as_ref().unwrap().texts, ["Title", "Two"], "{w:?}");
+    bridge.send(UiCommand::Input(":nohlsearch<CR>".into()));
+    previews(&bridge, &mut ed, &|w| w.len() == 1 && w[0].search.is_none());
+    bridge.send(UiCommand::Input("gg".into()));
     // Typing goes back to the text.
     bridge.send(UiCommand::Input("i".into()));
     previews(&bridge, &mut ed, &|w| w.is_empty());
@@ -2029,6 +2051,27 @@ fn start_fake_completion_lsp(bridge: &Bridge, ed: &mut Editor) {
     wait_for(bridge, ed, "vim.bo.complete:find('o^20', 1, true) ~= nil", "true");
 }
 
+/// ⌘C and ⌘X with nothing selected (the GUI sends <D-c>, <D-x>) do nothing:
+/// unmapped, Neovim took <D-c> for `c` and typed "<D-c>" in Insert mode.
+/// The user's own mapping of them stays.
+#[test]
+fn cmd_c_and_cmd_x_without_a_selection_do_nothing() {
+    if !nvim_available() {
+        return;
+    }
+    let (bridge, mut ed) = completion_session(&["--cmd", "lua vim.keymap.set('n', '<D-x>', 'iMINE<Esc>')"]);
+    wait_for(&bridge, &mut ed, "vim.fn.maparg('<D-c>', 'n', false, true).desc", "eshvi: nothing to copy");
+    bridge.send(UiCommand::Input("<Cmd>lua vim.api.nvim_buf_set_lines(0, 0, -1, false, {'hello'})<CR>".into()));
+    bridge.send(UiCommand::Input("<D-c>".into()));
+    wait_for(&bridge, &mut ed, "vim.fn.mode(1)", "n");
+    bridge.send(UiCommand::Input("A<D-c><D-x><Esc>".into()));
+    wait_for(&bridge, &mut ed, "vim.fn.mode(1)", "n");
+    assert_eq!(ask(&bridge, &mut ed, "vim.api.nvim_get_current_line()"), "hello");
+    bridge.send(UiCommand::Input("0<D-x>".into()));
+    wait_for(&bridge, &mut ed, "vim.api.nvim_get_current_line()", "MINEhello");
+    bridge.send(UiCommand::Command("qa!".into()));
+}
+
 #[test]
 fn completion_menu_puts_the_language_servers_items_before_buffer_words() {
     use nvim_bridge::gui::GuiEvent;
@@ -2054,6 +2097,24 @@ fn completion_menu_puts_the_language_servers_items_before_buffer_words() {
     let at = |w: &str| words.iter().position(|x| x == w).unwrap();
     assert!(at("for") < at("format") && at("format") < at("formatted_value"), "server's first, words after: {words:?}");
     assert!(at("format") < at("forward"), "{words:?}");
+    // Starting with what's typed comes before a fuzzy match the server put first.
+    assert!(at("format") < at("transform"), "{words:?}");
+    // Also when the menu opened before the word was typed: the server's
+    // answer, sorted for no word yet, is sorted again as it narrows.
+    bridge.send(UiCommand::Input("<Esc>ox.".into()));
+    menu_words(&bridge, &mut ed, "x.", |w| w.first().map(String::as_str) == Some("transform"));
+    for key in ["f", "o"] {
+        bridge.send(UiCommand::Input(key.into()));
+        pump_for(&bridge, &mut ed, Duration::from_millis(200), |_| false);
+    }
+    let words = menu_words(&bridge, &mut ed, "x.fo", |w| w.first().map(String::as_str) == Some("for"));
+    assert_eq!(words, ["for", "format", "transform", "function"], "only matches, what starts with \"fo\" first");
+    assert_eq!(ask(&bridge, &mut ed, "vim.fn.complete_info({ 'selected' }).selected"), "0", "the first selected");
+    // Narrower, and back: what matches again comes back.
+    bridge.send(UiCommand::Input("r".into()));
+    menu_words(&bridge, &mut ed, "x.for", |w| w == ["for", "format", "transform"]);
+    bridge.send(UiCommand::Input("<BS>".into()));
+    menu_words(&bridge, &mut ed, "x.fo again", |w| w == ["for", "format", "transform", "function"]);
     assert_eq!(ask(&bridge, &mut ed, "vim.o.completeopt"), "menuone,noinsert,fuzzy,nosort");
     assert_eq!(ask(&bridge, &mut ed, "vim.o.pumheight"), "12");
     bridge.send(UiCommand::Command("qa!".into()));
@@ -2189,6 +2250,18 @@ fn ctrl_space_shows_resolved_docs_that_follow_the_selection() {
     }
     assert!(ed.popupmenu.is_some(), "a menu to have no docs");
     assert!(!shown, "docs only when asked for");
+
+    // A menu that opened before the word was typed, narrowed by typing it to
+    // `byte`, with `transform` before it filtered out: its own docs, as the
+    // menu's first.
+    bridge.send(UiCommand::Input("<Esc>ox.".into()));
+    menu_words(&bridge, &mut ed, "x.", |w| w.len() == 6);
+    bridge.send(UiCommand::Input("b".into()));
+    menu_words(&bridge, &mut ed, "x.b", |w| w == ["byte"]);
+    while bridge.try_recv().is_some() {}
+    bridge.send(UiCommand::Input("<C-Space>".into()));
+    let GuiEvent::PumDoc { selected, .. } = doc(&bridge, &mut ed, Some("byte")) else { unreachable!() };
+    assert_eq!(selected, 0);
     bridge.send(UiCommand::Command("qa!".into()));
 }
 
@@ -2269,18 +2342,19 @@ fn tab_and_the_arrows_move_through_the_menu() {
     let (bridge, mut ed) = completion_session(&[]);
     start_fake_completion_lsp(&bridge, &mut ed);
     bridge.send(UiCommand::Input("ix.".into()));
+    // (The server's order: transform, byte, for, format, …; the first selected.)
     menu_words(&bridge, &mut ed, "x.", |w| w.contains(&"format".to_string()));
     bridge.send(UiCommand::Input("<Tab>".into()));
-    wait_for(&bridge, &mut ed, "vim.fn.getline('.')", "x.for");
+    wait_for(&bridge, &mut ed, "vim.fn.getline('.')", "x.byte");
     bridge.send(UiCommand::Input("<Tab>".into()));
-    wait_for(&bridge, &mut ed, "vim.fn.getline('.')", "x.format");
-    bridge.send(UiCommand::Input("<S-Tab>".into()));
     wait_for(&bridge, &mut ed, "vim.fn.getline('.')", "x.for");
+    bridge.send(UiCommand::Input("<S-Tab>".into()));
+    wait_for(&bridge, &mut ed, "vim.fn.getline('.')", "x.byte");
     // The arrows move without inserting; Enter takes what they're on.
     bridge.send(UiCommand::Input("<Down>".into()));
     wait_for(&bridge, &mut ed, "vim.fn.complete_info({ 'selected' }).selected", "2");
     bridge.send(UiCommand::Input("<CR>".into()));
-    wait_for(&bridge, &mut ed, "vim.fn.getline('.')", "x.format");
+    wait_for(&bridge, &mut ed, "vim.fn.getline('.')", "x.for");
     assert_eq!(ask(&bridge, &mut ed, "vim.fn.line('$')"), "1", "accepted, no new line");
     // No menu: a plain Tab.
     bridge.send(UiCommand::Input("<Esc>o<Tab>".into()));

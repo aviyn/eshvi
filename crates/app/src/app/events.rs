@@ -17,6 +17,12 @@ fn wheel_step(pending: f32) -> (i64, f32) {
     (step as i64, pending - step)
 }
 
+/// Whether Neovim waits for more keys: an operator for its motion, or a
+/// mapping's next key (shown in 'showcmd'; which-key's popup is up then).
+fn waits_for_keys(editor: &grid::Editor) -> bool {
+    !matches!(editor.mode.as_str(), "normal" | "") || editor.showcmd.iter().any(|c| !c.text.trim().is_empty())
+}
+
 impl VimApp {
     /// Scroll what `bar` is on so that line `top` (0-based) is first in view.
     pub(super) fn scroll_bar_to(&mut self, bar: Bar, top: i64) {
@@ -123,9 +129,12 @@ impl VimApp {
             || (self.explorer.visible && self.side == SideView::Git && self.scm.over_tooltip(pos))
     }
 
+    /// An in-place Markdown preview has the keyboard, and Neovim waits for
+    /// nothing (no operator, no keys of a mapping pending: which-key's
+    /// popup is Esc's then).
     fn in_place_preview_focused(&self) -> bool {
         let win = self.editor.windows.get(&self.editor.cursor.grid).map(|w| w.win);
-        win.and_then(|w| self.preview.win(w)).is_some_and(|p| !p.side)
+        !waits_for_keys(&self.editor) && win.and_then(|w| self.preview.win(w)).is_some_and(|p| !p.side)
     }
 
     fn over_popup_menu(&self, pos: Pos2) -> bool {
@@ -541,7 +550,8 @@ impl VimApp {
                                 self.send_mouse(d.button, "release", modifiers, d.grid, r, c);
                             }
                             self.send_mouse(name, "press", modifiers, grid, r, c);
-                            self.drag = Some(Drag { button: name, grid, cell: (r, c), shift });
+                            let still = grid == DEFAULT_GRID && usize::try_from(r).ok() == self.last_status_row();
+                            self.drag = Some(Drag { button: name, grid, cell: (r, c), shift, still });
                         }
                     } else if self.drag.as_ref().is_some_and(|d| d.button == name) {
                         // (Not the release of a button whose drag has ended already.)
@@ -552,7 +562,7 @@ impl VimApp {
                     }
                 }
                 Event::PointerMoved(pos) => {
-                    let Some((grid, shift)) = self.drag.as_ref().map(|d| (d.grid, d.shift)) else { continue };
+                    let Some((grid, shift)) = self.drag.as_ref().filter(|d| !d.still).map(|d| (d.grid, d.shift)) else { continue };
                     let cell = self.cell_in(grid, pos + shift);
                     if let Some(d) = self.drag.as_mut().filter(|d| d.cell != cell) {
                         d.cell = cell;
@@ -615,7 +625,7 @@ impl VimApp {
 
 #[cfg(test)]
 mod tests {
-    use super::wheel_step;
+    use super::{waits_for_keys, wheel_step};
 
     #[test]
     fn wheel_rows_go_a_few_at_a_time() {
@@ -626,5 +636,21 @@ mod tests {
         assert_eq!(wheel_step(-3.0), (-1, -2.0));
         // A long way: a quarter of it.
         assert_eq!(wheel_step(40.0), (10, 30.0));
+    }
+
+    /// Esc over an in-place preview leaves it only when Neovim waits for
+    /// nothing; else it's Neovim's (an operator, which-key's popup).
+    #[test]
+    fn neovim_waits_for_keys_in_an_operator_or_with_keys_pending() {
+        let mut ed = grid::Editor::new();
+        ed.mode = "normal".into();
+        assert!(!waits_for_keys(&ed));
+        ed.mode = "operator".into();
+        assert!(waits_for_keys(&ed), "after `c`: its motion");
+        ed.mode = "normal".into();
+        ed.showcmd = vec![grid::StyledChunk { style: grid::ChunkStyle::Id(0), text: "\"".into() }];
+        assert!(waits_for_keys(&ed), "a register, or a mapping's prefix");
+        ed.showcmd[0].text.clear();
+        assert!(!waits_for_keys(&ed));
     }
 }
