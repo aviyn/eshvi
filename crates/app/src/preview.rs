@@ -24,6 +24,10 @@ use crate::style::{self, Chrome};
 /// The room left and right of the text; the scroll bar is in the right one.
 const MARGIN: i8 = 28;
 
+/// A quote's bar, as wide as egui_commonmark draws it (beside a nested table,
+/// it continues the quote's).
+const QUOTE_BAR: f32 = 3.0;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Body {
     Code { lang: String, text: String },
@@ -32,12 +36,55 @@ pub enum Body {
     Table { align: Vec<Alignment>, rows: Vec<Vec<String>> },
 }
 
-/// A top-level block and the source lines it spans (1-based).
+/// A top-level block and the source lines it spans (1-based). A table in a
+/// list item or a quote is a block of its own, `nest`ed as it was there
+/// (egui_commonmark would put it on the item's line, or flatten it).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Block {
     pub lines: Range<usize>,
     pub body: Body,
+    pub nest: Nest,
 }
+
+/// The list items and quotes a block is in, outermost first: `true` for a quote.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Nest(pub Vec<bool>);
+
+impl Nest {
+    /// In list items, not quotes: text after its table is still the item's
+    /// when indented as far.
+    fn only_items(&self) -> bool {
+        !self.0.is_empty() && !self.0.contains(&true)
+    }
+
+    /// How far right its text goes, as egui_commonmark indents it there, and
+    /// where its quotes' bars are: an item's text is 4 spaces in a level, and
+    /// 4 points after its bullet; a quote's 10 points right of its bar.
+    fn indent(&self, space: f32) -> (f32, Vec<f32>) {
+        let (mut x, mut run, mut bars) = (0.0, 0, Vec::new());
+        let items = |run: usize| if run > 0 { run as f32 * 4.0 * space + 4.0 } else { 0.0 };
+        for &quote in &self.0 {
+            if quote {
+                x += items(std::mem::take(&mut run));
+                bars.push(x);
+                x += 10.0;
+            } else {
+                run += 1;
+            }
+        }
+        (x + items(run), bars)
+    }
+}
+
+/// A table being read: its columns, rows, depth, and where it is.
+struct TableRead {
+    align: Vec<Alignment>,
+    rows: Vec<Vec<String>>,
+    depth: usize,
+    nest: Nest,
+    start: usize,
+}
+
 
 /// Split Markdown into its top-level blocks. Link reference definitions
 /// (`[x]: url`) aren't blocks; they are added to each Markdown block so its
@@ -52,52 +99,119 @@ pub fn blocks(text: &str) -> Vec<Block> {
         })
         .map(|l| format!("\n{l}"))
         .collect();
+    // Markdown from `start` to `end`, if there's any.
+    let markdown = |out: &mut Vec<Block>, start: usize, end: usize, nest: Nest| {
+        let source = &text[start..end];
+        let trimmed = source.trim_end();
+        if trimmed.trim_start().is_empty() {
+            return;
+        }
+        let first = start + (source.len() - source.trim_start_matches(['\n', '\r']).len());
+        let lines = line_of(first)..line_of(start + trimmed.len().saturating_sub(1)) + 1;
+        out.push(Block { lines, body: Body::Markdown(format!("{source}{refs}")), nest });
+    };
+    // What follows a table in a list or quote, up to `end`: the item's text
+    // that goes on after it (indented as far as its line), there still; then
+    // the rest of the list or quote.
+    let after_table = |out: &mut Vec<Block>, from: usize, end: usize, column: usize, nest: &Nest| {
+        let after = &text[from..end];
+        let mut cont = 0;
+        for line in after.split_inclusive('\n') {
+            let indent = line.len() - line.trim_start_matches(' ').len();
+            if !line.trim().is_empty() && (!nest.only_items() || indent < column) {
+                break;
+            }
+            cont += line.len();
+        }
+        let continued: String = after[..cont].split_inclusive('\n').map(|l| &l[column.min(l.len() - l.trim_start_matches(' ').len())..]).collect();
+        if !continued.trim().is_empty() {
+            let first = from + (after.len() - after.trim_start_matches(['\n', '\r', ' ']).len());
+            let lines = line_of(first)..line_of(from + after[..cont].trim_end().len().saturating_sub(1)) + 1;
+            out.push(Block { lines, body: Body::Markdown(format!("{continued}{refs}")), nest: nest.clone() });
+        }
+        markdown(out, from + cont, end, Nest::default());
+    };
     let mut out = Vec::new();
     let mut depth = 0usize;
     let mut start = 0usize;
     let mut code: Option<(String, String)> = None;
-    let mut table: Option<(Vec<Alignment>, Vec<Vec<String>>)> = None;
+    let mut table: Option<TableRead> = None;
+    // In a top-level list or quote: the open items and quotes, where the
+    // Markdown not yet a block starts (after a table in it), and the column
+    // its item's text is at.
+    let mut open: Vec<bool> = Vec::new();
+    let mut rest: Option<(usize, usize, Nest)> = None;
     for (event, range) in Parser::new_ext(text, Options::all()).into_offset_iter() {
         match event {
             Event::Start(tag) => {
                 if depth == 0 {
                     start = range.start;
-                    match &tag {
-                        Tag::CodeBlock(kind) => {
-                            let lang = match kind {
-                                CodeBlockKind::Fenced(info) => info.split_whitespace().next().unwrap_or("").to_owned(),
-                                CodeBlockKind::Indented => String::new(),
-                            };
-                            code = Some((lang, String::new()));
-                        }
-                        Tag::Table(align) => table = Some((align.clone(), Vec::new())),
-                        _ => {}
+                    rest = None;
+                    open.clear();
+                    if let Tag::CodeBlock(kind) = &tag {
+                        let lang = match kind {
+                            CodeBlockKind::Fenced(info) => info.split_whitespace().next().unwrap_or("").to_owned(),
+                            CodeBlockKind::Indented => String::new(),
+                        };
+                        code = Some((lang, String::new()));
                     }
-                } else if let Some((_, rows)) = &mut table {
-                    match tag {
-                        Tag::TableHead | Tag::TableRow => rows.push(Vec::new()),
-                        Tag::TableCell if depth == 2 => {
-                            if let Some(row) = rows.last_mut() {
-                                row.push(format!("{}{refs}", cell_markdown(&text[range.clone()])));
+                }
+                match &tag {
+                    Tag::Item => open.push(false),
+                    Tag::BlockQuote(_) => open.push(true),
+                    Tag::Table(align) if table.is_none() => {
+                        let nest = Nest(open.clone());
+                        if depth > 0 {
+                            // What's before it in the list or quote (up to its line,
+                            // which a quote's `>` starts).
+                            let line = text[..range.start].rfind('\n').map_or(0, |n| n + 1);
+                            match rest.take() {
+                                Some((from, column, nest)) => after_table(&mut out, from, line, column, &nest),
+                                None => markdown(&mut out, start, line, Nest::default()),
                             }
                         }
-                        _ => {}
+                        table = Some(TableRead { align: align.clone(), rows: Vec::new(), depth, nest, start: range.start });
                     }
+                    Tag::TableHead | Tag::TableRow if table.is_some() => table.as_mut().unwrap().rows.push(Vec::new()),
+                    Tag::TableCell if table.as_ref().is_some_and(|t| depth == t.depth + 2) => {
+                        if let Some(row) = table.as_mut().and_then(|t| t.rows.last_mut()) {
+                            row.push(format!("{}{refs}", cell_markdown(&text[range.clone()])));
+                        }
+                    }
+                    _ => {}
                 }
                 depth += 1;
             }
-            Event::End(_) => {
+            Event::End(end) => {
                 depth = depth.saturating_sub(1);
+                if matches!(end, pulldown_cmark::TagEnd::Item | pulldown_cmark::TagEnd::BlockQuote(_)) {
+                    open.pop();
+                }
+                if table.as_ref().is_some_and(|t| t.depth == depth) && matches!(end, pulldown_cmark::TagEnd::Table) {
+                    let t = table.take().unwrap();
+                    let lines = line_of(t.start)..line_of(range.end.saturating_sub(1)) + 1;
+                    let nest = t.nest.clone();
+                    out.push(Block { lines, body: Body::Table { align: t.align, rows: t.rows }, nest: t.nest });
+                    if depth > 0 {
+                        // The column the table's line starts at: its item's text.
+                        let column = t.start - text[..t.start].rfind('\n').map_or(0, |n| n + 1);
+                        rest = Some((range.end, column, nest));
+                    }
+                    continue;
+                }
                 if depth == 0 {
+                    if let Some((from, column, nest)) = rest.take() {
+                        after_table(&mut out, from, range.end, column, &nest);
+                        continue;
+                    }
                     // (A list's range takes the blank line after it.)
                     let end = start + text[start..range.end].trim_end().len();
                     let lines = line_of(start)..line_of(end.saturating_sub(1)) + 1;
-                    let body = match (code.take(), table.take()) {
-                        (Some((lang, text)), _) => Body::Code { lang, text: text.trim_end_matches('\n').to_owned() },
-                        (_, Some((align, rows))) => Body::Table { align, rows },
+                    let body = match code.take() {
+                        Some((lang, text)) => Body::Code { lang, text: text.trim_end_matches('\n').to_owned() },
                         _ => Body::Markdown(format!("{}{refs}", &text[start..range.end])),
                     };
-                    out.push(Block { lines, body });
+                    out.push(Block { lines, body, nest: Nest::default() });
                 }
             }
             Event::Text(t) if depth == 1 => {
@@ -108,7 +222,7 @@ pub fn blocks(text: &str) -> Vec<Block> {
             // Rules and the like: blocks without a start and end.
             Event::Rule | Event::Html(_) if depth == 0 => {
                 let lines = line_of(range.start)..line_of(range.end.saturating_sub(1)) + 1;
-                out.push(Block { lines, body: Body::Markdown(text[range].to_owned()) });
+                out.push(Block { lines, body: Body::Markdown(text[range].to_owned()), nest: Nest::default() });
             }
             _ => {}
         }
@@ -225,6 +339,32 @@ fn show_table(ui: &mut Ui, viewer: impl Fn() -> CommonMarkViewer<'static>, cache
     rect
 }
 
+/// A block drawn by `add` where it was nested (a list item, a quote): moved
+/// right as far as egui_commonmark moves the item's text, with the quotes'
+/// bars at its left. Returns where it went.
+fn nested(ui: &mut Ui, nest: &Nest, add: impl FnOnce(&mut Ui) -> Rect) -> Rect {
+    if nest.0.is_empty() {
+        return add(ui);
+    }
+    let body = TextStyle::Body.resolve(ui.style());
+    let space = ui.fonts_mut(|f| f.glyph_width(&body, ' '));
+    let (indent, bars) = nest.indent(space);
+    let mut room = ui.available_rect_before_wrap();
+    let left = room.min.x;
+    room.min.x = (left + indent).min(room.max.x);
+    let mut child = ui.new_child(UiBuilder::new().max_rect(room).layout(*ui.layout()));
+    let rect = add(&mut child);
+    let used = child.min_rect().union(rect);
+    let color = ui.visuals().weak_text_color();
+    for x in bars {
+        // (As egui_commonmark's, 5 points in from the ends.)
+        ui.painter().vline(left + x, used.min.y + 5.0..=used.max.y - 5.0, egui::Stroke::new(QUOTE_BAR, color));
+    }
+    let whole = Rect::from_min_max(Pos2::new(left, used.min.y), used.max);
+    ui.advance_cursor_after_rect(whole);
+    whole
+}
+
 /// A previewed buffer: its blocks, code laid out once.
 struct Doc {
     blocks: Vec<Block>,
@@ -325,7 +465,7 @@ impl Previews {
                 ui.add_space(12.0);
                 ui.spacing_mut().item_spacing.y = 8.0;
                 for (i, block) in doc.blocks.iter().enumerate() {
-                    let rect: Rect = match &block.body {
+                    let rect = nested(ui, &block.nest, |ui| match &block.body {
                         Body::Code { lang, text } => {
                             let job = doc.code[i]
                                 .get_or_insert_with(|| crate::markdown::highlight(text, lang, theme.map(|t| &**t), fonts, fg))
@@ -353,7 +493,7 @@ impl Previews {
                         Body::Table { align, rows } => {
                             ui.push_id(i, |ui| show_table(ui, viewer, &mut doc.cache, align, rows)).inner
                         }
-                    };
+                    });
                     ends.push(rect.max.y);
                     if follow && Some(i) == target {
                         ui.scroll_to_rect(rect.expand(12.0), Some(egui::Align::TOP));
@@ -672,6 +812,85 @@ mod tests {
         let Body::Markdown(see) = &b[5].body else { panic!() };
         assert!(see.starts_with("See [docs][d].") && see.contains("[d]: https://example.com"), "{see}");
         assert!(matches!(&b[0].body, Body::Markdown(t) if t.starts_with("# Title")));
+    }
+
+    /// A table in a list item or a quote is a block of its own, nested as it was;
+    /// the item's text after it stays the item's, the rest of the list goes on.
+    #[test]
+    fn a_nested_table_is_a_block_of_its_own() {
+        let md = "- Item\n\n\n  | K | A |\n  |---|---|\n  | a | 1 |\n\n  More of it.\n- Next\n  - Inner\n\n    | K | A |\n    |---|---|\n    | n | 2 |\n\n> Quote\n>\n> | K | A |\n> |---|---|\n> | c | 3 |\n>\n> More.\n";
+        let b = blocks(md);
+        let shown: Vec<(Range<usize>, Vec<bool>, &str)> = b
+            .iter()
+            .map(|b| {
+                let what = match &b.body {
+                    Body::Markdown(t) => t.trim(),
+                    Body::Table { .. } => "table",
+                    Body::Code { .. } => "code",
+                };
+                (b.lines.clone(), b.nest.0.clone(), what)
+            })
+            .collect();
+        assert_eq!(
+            shown,
+            [
+                (1..2, vec![], "- Item"),
+                (4..7, vec![false], "table"),
+                (8..9, vec![false], "More of it."),
+                (9..11, vec![], "- Next\n  - Inner"),
+                (12..15, vec![false, false], "table"),
+                (16..18, vec![], "> Quote\n>"),
+                (18..21, vec![true], "table"),
+                (21..23, vec![], ">\n> More."),
+            ]
+        );
+        let Body::Table { rows, .. } = &b[6].body else { panic!() };
+        assert_eq!(rows, &[vec!["K".to_owned(), "A".to_owned()], vec!["c".to_owned(), "3".to_owned()]]);
+    }
+
+    #[test]
+    fn nesting_moves_right_as_egui_commonmark_does() {
+        assert_eq!(Nest(vec![]).indent(3.0), (0.0, vec![]));
+        assert_eq!(Nest(vec![false]).indent(3.0), (16.0, vec![]), "4 spaces and 4 points");
+        assert_eq!(Nest(vec![false, false]).indent(3.0), (28.0, vec![]));
+        assert_eq!(Nest(vec![true]).indent(3.0), (10.0, vec![0.0]));
+        assert_eq!(Nest(vec![true, false]).indent(3.0), (26.0, vec![0.0]));
+        assert_eq!(Nest(vec![false, true]).indent(3.0), (26.0, vec![16.0]));
+    }
+
+    /// Drawn: the item's table under its text, where the text starts, not at the end of its line.
+    #[test]
+    fn a_table_in_a_list_item_starts_under_its_text() {
+        let md = "- A list item\n\n  | Key | Action |\n  |---|---|\n  | a | one |\n";
+        let mut previews = Previews::default();
+        previews.set_wins(vec![PreviewWin { win: 1, buf: 7, line: 1, side: false, path: "/x/n.md".into(), search: None }]);
+        previews.set_text(7, md);
+        let chrome = Chrome::new(Color32::from_rgb(0x28, 0x2c, 0x34), Color32::from_rgb(0xab, 0xb2, 0xbf), Color32::from_rgb(0x4f, 0xa6, 0xed));
+        let mut icons = IconTextures::default();
+        let mut fonts: Option<GridFonts> = None;
+        let mut h = egui_kittest::Harness::builder().with_size(Vec2::new(400.0, 300.0)).with_accessibility_check(false).build_ui_state(
+            move |ui, p: &mut Previews| {
+                let f = fonts.get_or_insert_with(|| crate::fonts::install(ui.ctx(), &crate::fonts::FontSpec::default_with_size(13.0), None, None, None, None));
+                if f.is_live(ui.ctx()) {
+                    p.show(ui, 1, None, f, Color32::WHITE, true, &chrome, &mut icons);
+                }
+            },
+            previews,
+        );
+        h.run();
+        let texts: Vec<(String, Rect)> = h
+            .output()
+            .shapes
+            .iter()
+            .filter_map(|c| match &c.shape {
+                egui::Shape::Text(t) => Some((t.galley.text().to_owned(), t.visual_bounding_rect())),
+                _ => None,
+            })
+            .collect();
+        let at = |s: &str| texts.iter().find(|(t, _)| t == s).map(|(_, r)| *r).unwrap_or_else(|| panic!("no {s:?} in {texts:?}"));
+        let (item, key) = (at("A list item"), at("Key"));
+        assert!(key.min.y > item.max.y, "under the item's line: {key:?} {item:?}");
+        assert!(key.min.x >= item.min.x && key.min.x < item.min.x + 20.0, "where its text starts: {key:?} {item:?}");
     }
 
     #[test]
