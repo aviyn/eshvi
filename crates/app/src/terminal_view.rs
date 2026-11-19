@@ -1596,7 +1596,7 @@ mod tests {
         let ctx = Context::default();
         let fonts = crate::fonts::install(&ctx, &crate::fonts::FontSpec::default_with_size(14.0), None, None, None, None);
         let script = "printf 'ready\\033[?2004h'; stty raw -echo; cat -v";
-        let t = Terminal::spawn(SpawnOptions::new(vec!["/bin/sh".into(), "-c".into(), script.into()], term::Size { cols: 40, rows: 5, cell_w: 8, cell_h: 16 })).unwrap();
+        let t = Terminal::spawn(SpawnOptions::new(vec!["/bin/sh".into(), "-c".into(), script.into()], term::Size { cols: 100, rows: 5, cell_w: 8, cell_h: 16 })).unwrap();
         let mut view = TerminalView::new(t);
         frame(&ctx, &mut view, &fonts, vec![]);
         until("bracketed paste", || view.terminal().mode().contains(term::TermMode::BRACKETED_PASTE));

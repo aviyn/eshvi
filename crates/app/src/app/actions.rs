@@ -176,8 +176,11 @@ impl VimApp {
                         // (An image and no text: an empty paste, as for ⌘V.)
                         "paste" => {
                             let Ok(mut clip) = arboard::Clipboard::new() else { continue };
-                            match clip.get_text() {
-                                Ok(text) if !text.is_empty() => Event::Paste(text),
+                            // (Copied files, in a terminal: their paths, as for ⌘V.)
+                            let files = self.terminal_focused().then(crate::file_clipboard::pasted_paths).flatten();
+                            match (files, clip.get_text()) {
+                                (Some(paths), _) => Event::Paste(paths),
+                                (_, Ok(text)) if !text.is_empty() => Event::Paste(text),
                                 _ if clip.get_image().is_ok() => Event::Paste(String::new()),
                                 _ => continue,
                             }

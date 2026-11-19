@@ -388,6 +388,14 @@ impl VimApp {
                         SideView::Tree(id) => self.tree_side_key(id, key, modifiers),
                     }
                 }
+                // ⌘C in the explorer: its selection on the clipboard, as the Finder copies files.
+                Event::Copy if self.explorer.focused && self.side == SideView::Explorer => {
+                    side_typed = true;
+                    let paths = self.explorer.selection();
+                    if !paths.is_empty() {
+                        crate::file_clipboard::set_files(&paths);
+                    }
+                }
                 Event::Text(_) | Event::Ime(_) | Event::Paste(_) if self.focus == Focus::Side => side_typed = true,
                 // Ctrl+F/B scroll a completion item's documentation while
                 // it is taller than its popup (as nvim-cmp and blink.cmp do).

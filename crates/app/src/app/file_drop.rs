@@ -62,7 +62,7 @@ impl VimApp {
             return;
         }
         if let Some((focus, _)) = pos.and_then(|p| self.drop_terminal(p)) {
-            let text = dropped.iter().map(|p| shell_escape(&p.to_string_lossy())).collect::<Vec<_>>().join(" ");
+            let text = crate::file_clipboard::shell_words(&dropped);
             let view = match focus {
                 Focus::Agent(id) => self.agents.views.get_mut(&id),
                 Focus::Terminal(id) => self.bottom.views.get_mut(&id),
@@ -94,19 +94,6 @@ fn files_and_folders(paths: Vec<PathBuf>) -> (Vec<PathBuf>, Vec<PathBuf>) {
     paths.into_iter().partition(|p| p.is_file())
 }
 
-/// A path as Terminal pastes a dropped file's: one shell word, its special
-/// characters behind backslashes.
-fn shell_escape(path: &str) -> String {
-    let mut out = String::with_capacity(path.len());
-    for c in path.chars() {
-        if c.is_ascii() && !(c.is_ascii_alphanumeric() || "-_./+,:@%^=".contains(c)) {
-            out.push('\\');
-        }
-        out.push(c);
-    }
-    out
-}
-
 #[cfg(target_os = "macos")]
 fn drag_position(ctx: &egui::Context, frame: &eframe::Frame) -> Option<Pos2> {
     use objc2_app_kit::NSView;
@@ -129,15 +116,7 @@ fn drag_position(ctx: &egui::Context, _frame: &eframe::Frame) -> Option<Pos2> {
 
 #[cfg(test)]
 mod tests {
-    use super::{files_and_folders, shell_escape};
-
-    #[test]
-    fn dropped_paths_are_escaped_as_terminal_does() {
-        assert_eq!(shell_escape("/Users/me/Desktop/shot.png"), "/Users/me/Desktop/shot.png");
-        assert_eq!(shell_escape("/tmp/Screenshot 2026-11-19 at 9.06.59 PM.png"), r"/tmp/Screenshot\ 2026-11-19\ at\ 9.06.59\ PM.png");
-        assert_eq!(shell_escape("/tmp/a'b(c)&$d"), r"/tmp/a\'b\(c\)\&\$d");
-        assert_eq!(shell_escape("/tmp/café"), "/tmp/café");
-    }
+    use super::files_and_folders;
 
     #[test]
     fn folders_are_kept_apart_from_files() {

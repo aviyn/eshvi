@@ -387,7 +387,7 @@ impl ExplorerView {
     }
 
     /// The selected paths: the extra selection, else the selected row.
-    fn selection(&self) -> Vec<PathBuf> {
+    pub fn selection(&self) -> Vec<PathBuf> {
         if self.multi.is_empty() {
             self.selected.iter().cloned().collect()
         } else {

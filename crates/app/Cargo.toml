@@ -59,8 +59,8 @@ muda = "0.21"
 raw-window-handle = "0.6"
 # Where the traffic-light buttons are (muda's versions).
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSGeometry"] }
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSResponder", "NSView", "NSWindow", "NSControl", "NSButton"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSGeometry", "NSArray", "NSString", "NSURL"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSResponder", "NSView", "NSWindow", "NSControl", "NSButton", "NSPasteboard", "NSPasteboardItem"] }
 
 [dev-dependencies]
 # Screenshot tests of the chrome (`style::tests`; `UPDATE_SNAPSHOTS=1

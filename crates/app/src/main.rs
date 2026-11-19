@@ -12,6 +12,7 @@ mod decorations;
 mod diff_view;
 mod explorer;
 mod explorer_view;
+mod file_clipboard;
 mod focus;
 mod fonts;
 mod git;

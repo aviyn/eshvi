@@ -829,10 +829,19 @@ impl VimApp {
 impl eframe::App for VimApp {
     /// ⌘V with an image and no text on the clipboard is an empty paste: a
     /// terminal sends it, and a program like Claude Code then reads the image.
+    /// And files copied (in the Finder or the explorer) paste into a terminal as
+    /// their paths, not the names that come with them as text.
     fn raw_input_hook(&mut self, _ctx: &egui::Context, raw_input: &mut egui::RawInput) {
         for ev in &mut raw_input.events {
             if matches!(ev, egui::Event::PasteImage(_)) {
                 *ev = egui::Event::Paste(String::new());
+            }
+            if let egui::Event::Paste(text) = ev {
+                if self.focus.in_terminal() {
+                    if let Some(paths) = crate::file_clipboard::pasted_paths() {
+                        *text = paths;
+                    }
+                }
             }
         }
     }
