@@ -36,7 +36,18 @@ impl VimApp {
         let theme = crate::popup::PopupTheme::from_editor(&self.editor);
         let chrome = Chrome::from_editor(&self.editor);
         let code = crate::picker::CodeTheme::from_editor(&self.editor, theme.accent);
-        let look = Look { theme: &theme, chrome: &chrome, fonts: &self.grid_fonts, metrics, area, code: &code, problems: self.problem_colors(), preview: self.config.picker.preview };
+        let syntax = self.lsp.syntax();
+        let look = Look {
+            theme: &theme,
+            chrome: &chrome,
+            fonts: &self.grid_fonts,
+            metrics,
+            area,
+            code: &code,
+            problems: self.problem_colors(),
+            preview: self.config.picker.preview,
+            syntax: syntax.as_deref(),
+        };
         let actions = self.picker.show(ctx, &look, &mut self.icons);
         if let Some(rect) = self.picker.rect() {
             self.popup_rects.push(rect);

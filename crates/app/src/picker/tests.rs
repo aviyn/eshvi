@@ -403,6 +403,7 @@ fn harness_with(theme: &str, width: f32, height: f32, open: Option<PickerOpen>) 
                 code: &env.code,
                 problems: [Color32::from_rgb(0xf1, 0x4c, 0x4c), Color32::from_rgb(0xcc, 0xa7, 0x00), Color32::from_rgb(0x37, 0x94, 0xff)],
                 preview: env.placement,
+                syntax: Some(test_syntax(env.chrome.bg.r() < 128)),
             };
             let actions = env.view.show(&ctx, &look, &mut env.icons);
             env.actions.extend(actions);
@@ -823,4 +824,15 @@ fn a_big_tree_walks_and_ranks_fast_enough_to_type_into() {
         eprintln!("rank {query:?}: {} matches in {:?}", ranked.len(), started.elapsed());
     }
     let _ = std::fs::remove_dir_all(dir);
+}
+
+/// The syntax colors grep's lines get in the pictures (in the app, the
+/// diff view's, made from the editor's colors).
+fn test_syntax(dark: bool) -> &'static syntect::highlighting::Theme {
+    static THEMES: std::sync::OnceLock<(syntect::highlighting::Theme, syntect::highlighting::Theme)> = std::sync::OnceLock::new();
+    let (dark_theme, light_theme) = THEMES.get_or_init(|| {
+        let set = syntect::highlighting::ThemeSet::load_defaults();
+        (set.themes["base16-ocean.dark"].clone(), set.themes["InspiredGitHub"].clone())
+    });
+    if dark { dark_theme } else { light_theme }
 }

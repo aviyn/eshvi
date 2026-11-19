@@ -163,6 +163,8 @@ pub struct Snippet {
     pub ranges: Vec<Range<usize>>,
     /// The matches in the whole line (bytes), which the preview marks.
     pub line_ranges: Vec<Range<usize>>,
+    /// `text`'s colors in its file's language, worked out when first drawn.
+    pub colors: std::cell::OnceCell<Vec<(Range<usize>, preview::Style)>>,
 }
 
 /// All the rows, the ones Neovim sent first and the walk's after them, each
@@ -210,7 +212,7 @@ impl Items {
                 buf: item.buf,
                 grep: item.line.map(|l| {
                     let ranges = |r: Vec<(usize, usize)>| r.into_iter().map(|(a, b)| a..b).collect();
-                    Box::new(Snippet { text: l.text, ranges: ranges(l.ranges), line_ranges: ranges(l.line_ranges) })
+                    Box::new(Snippet { text: l.text, ranges: ranges(l.ranges), line_ranges: ranges(l.line_ranges), colors: Default::default() })
                 }),
                 kind: item.kind,
                 depth: item.depth,
@@ -747,7 +749,7 @@ impl State {
                 text: h.path,
                 lnum: Some(h.lnum),
                 col: Some(h.col),
-                grep: Some(Box::new(Snippet { text: h.text, ranges: h.ranges, line_ranges: h.line_ranges })),
+                grep: Some(Box::new(Snippet { text: h.text, ranges: h.ranges, line_ranges: h.line_ranges, colors: Default::default() })),
                 ..Default::default()
             })
             .collect();
@@ -999,6 +1001,17 @@ pub struct Look<'a> {
     pub problems: [Color32; 3],
     /// `[picker] preview`.
     pub preview: PreviewPlacement,
+    /// The syntax colors grep's lines are drawn in (the diff view's).
+    pub syntax: Option<&'a syntect::highlighting::Theme>,
+}
+
+/// A grep match's line colored in `path`'s language (by its extension), as
+/// the diff view colors code; none for a language syntect doesn't know.
+pub fn snippet_colors(text: &str, path: &str, theme: &syntect::highlighting::Theme, fg: Color32) -> Vec<(Range<usize>, preview::Style)> {
+    let lang = crate::diff_view::source::language(path);
+    let spans = crate::markdown::spans(&[text.to_owned()], std::slice::from_ref(&(0..1)), lang, theme, fg);
+    let line = spans.and_then(|lines| lines.into_iter().next().flatten()).unwrap_or_default();
+    line.into_iter().map(|s| (s.start..s.end, preview::Style { fg: Some(s.color), bold: s.bold, italic: s.italic })).collect()
 }
 
 #[derive(Default)]
@@ -1561,28 +1574,6 @@ fn highlighted(text: &str, matched: &[u32], base: usize, font: &FontId, color: C
     job
 }
 
-/// `text` in `color`, the byte `ranges` of it in `accent`.
-fn spans_job(text: &str, ranges: &[Range<usize>], font: &FontId, color: Color32, accent: Color32) -> LayoutJob {
-    let mut job = LayoutJob::default();
-    let mut at = 0;
-    let mut add = |piece: &str, color: Color32| {
-        if !piece.is_empty() {
-            job.append(piece, 0.0, egui::TextFormat { font_id: font.clone(), color, ..Default::default() });
-        }
-    };
-    for r in ranges {
-        let (start, end) = (r.start.max(at), r.end.min(text.len()));
-        if start >= end || !text.is_char_boundary(start) || !text.is_char_boundary(end) {
-            continue;
-        }
-        add(&text[at..start], color);
-        add(&text[start..end], accent);
-        at = end;
-    }
-    add(&text[at..], color);
-    job
-}
-
 /// How far a symbol is moved in for each level it is down, in cells.
 const INDENT: f32 = 2.0;
 
@@ -1662,11 +1653,17 @@ fn paint_row(ui: &mut egui::Ui, rect: Rect, p: &RowPaint, look: &Look, font: &Fo
             }
             draw(x, job);
         }
-        let (mono, _) = look.fonts.font_id(false, false);
+        // The line in its language's colors (as the preview's code), the
+        // matches marked as there.
         let room = right - (first_end + gap);
         let chars = (room / look.metrics.width).floor().max(0.0) as usize;
-        let (text, ranges) = grep::cut_window(&g.text, &g.ranges, chars, |_| 1);
-        draw(first_end + gap, spans_job(&text, &ranges, &mono, fg, theme.accent));
+        let cut = grep::Cut::of(&g.text, &g.ranges, chars, |_| 1);
+        let colors = look.syntax.map_or(&[][..], |theme| g.colors.get_or_init(|| snippet_colors(&g.text, &row.text, theme, look.code.fg)).as_slice());
+        let (ranges, spans): (Vec<_>, Vec<_>) = colors.iter().map(|(r, s)| (r.clone(), *s)).unzip();
+        let spans: Vec<_> = cut.moved(&ranges).into_iter().zip(spans).collect();
+        let code = CodeTheme { fg, ..*look.code };
+        let plook = PreviewLook { theme, code: &code, fonts: look.fonts, metrics: look.metrics };
+        draw(first_end + gap, preview::line_job(&cut.text(&g.text), &spans, &cut.moved(&g.ranges), &plook));
         return;
     }
     if let (Some(w), Some(n)) = (p.number_w, row.lnum) {

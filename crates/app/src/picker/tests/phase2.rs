@@ -227,6 +227,28 @@ fn a_long_line_is_cut_around_its_first_match() {
     let (text, ranges) = grep::cut_window("0123456789 needle tail of the line", &[11..17], 12, |_| 1);
     assert_eq!(text.chars().count(), 12 + 2);
     assert_eq!(&text[ranges[0].clone()], "needle");
+    // Other stretches of the line (its colors) move with it.
+    let cut = grep::Cut::of("0123456789 needle tail of the line", std::slice::from_ref(&(11..17)), 12, |_| 1);
+    assert_eq!(cut.text("0123456789 needle tail of the line"), text);
+    let moved = cut.moved(&[0..4, 18..22]);
+    assert_eq!(moved.iter().map(|r| &text[r.clone()]).collect::<Vec<_>>(), ["tai"], "the start cut off, the end where the cut is");
+}
+
+/// Grep's lines are in their file's colors, as the diff view's code; a
+/// language syntect doesn't know stays plain.
+#[test]
+fn a_grep_line_is_colored_in_its_files_language() {
+    let theme = syntect::highlighting::ThemeSet::load_defaults().themes["base16-ocean.dark"].clone();
+    let fg = Color32::WHITE;
+    let colors = snippet_colors("let n = \"text\"; // note", "crates/a/src/lib.rs", &theme, fg);
+    let color_of = |word: &str| {
+        let at = "let n = \"text\"; // note".find(word).unwrap();
+        colors.iter().rev().find(|(r, _)| r.contains(&at)).and_then(|(_, s)| s.fg)
+    };
+    let (keyword, string, comment) = (color_of("let"), color_of("text"), color_of("note"));
+    assert!(keyword.is_some() && string.is_some() && comment.is_some(), "{colors:?}");
+    assert!(keyword != string && string != comment, "{colors:?}");
+    assert!(snippet_colors("some words", "notes.unknownext", &theme, fg).is_empty());
 }
 
 #[test]

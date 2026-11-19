@@ -129,10 +129,55 @@ pub fn hit(path: &str, lnum: usize, line: &str, matcher: &RegexMatcher) -> Hit {
 /// has its first range in it, with "…" where it is cut, and the ranges that
 /// are in the window, moved to where they are in the new text.
 pub fn cut_window(text: &str, ranges: &[Range<usize>], budget: usize, cost: impl Fn(char) -> usize) -> (String, Vec<Range<usize>>) {
-    let total: usize = text.chars().map(&cost).sum();
-    if total <= budget {
-        return (text.to_owned(), ranges.to_vec());
+    let cut = Cut::of(text, ranges, budget, cost);
+    (cut.text(text), cut.moved(ranges))
+}
+
+/// Where `cut_window` cuts a text: the bytes kept, and whether "…" goes before.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Cut {
+    pub start: usize,
+    pub end: usize,
+    /// The length of the text: "…" goes after when `end` is short of it.
+    len: usize,
+}
+
+impl Cut {
+    pub fn of(text: &str, ranges: &[Range<usize>], budget: usize, cost: impl Fn(char) -> usize) -> Self {
+        let whole = Self { start: 0, end: text.len(), len: text.len() };
+        let total: usize = text.chars().map(&cost).sum();
+        if total <= budget {
+            return whole;
+        }
+        let (start, end) = window(text, ranges, budget, cost);
+        Self { start, end, ..whole }
     }
+
+    fn lead(&self) -> &'static str {
+        if self.start > 0 { "…" } else { "" }
+    }
+
+    /// The text as shown.
+    pub fn text(&self, text: &str) -> String {
+        let tail = if self.end < self.len { "…" } else { "" };
+        format!("{}{}{tail}", self.lead(), &text[self.start..self.end])
+    }
+
+    /// `ranges` of the text where they are in the text shown (those in it).
+    pub fn moved(&self, ranges: &[Range<usize>]) -> Vec<Range<usize>> {
+        let lead = self.lead().len();
+        ranges
+            .iter()
+            .filter_map(|r| {
+                let (s, e) = (r.start.max(self.start), r.end.min(self.end));
+                (s < e).then(|| (s - self.start + lead)..(e - self.start + lead))
+            })
+            .collect()
+    }
+}
+
+/// The bytes `cut_window` keeps of a text longer than `budget`.
+fn window(text: &str, ranges: &[Range<usize>], budget: usize, cost: impl Fn(char) -> usize) -> (usize, usize) {
     let anchor = ranges.first().map_or(0, |r| r.start);
     // A little of what comes before the match, as far as the budget allows.
     let mut start = anchor;
@@ -153,16 +198,7 @@ pub fn cut_window(text: &str, ranges: &[Range<usize>], budget: usize, cost: impl
         used += cost(c);
         end = start + i + c.len_utf8();
     }
-    let (lead, tail) = (if start > 0 { "…" } else { "" }, if end < text.len() { "…" } else { "" });
-    let shown = format!("{lead}{}{tail}", &text[start..end]);
-    let moved = ranges
-        .iter()
-        .filter_map(|r| {
-            let (s, e) = (r.start.max(start), r.end.min(end));
-            (s < e).then(|| (s - start + lead.len())..(e - start + lead.len()))
-        })
-        .collect();
-    (shown, moved)
+    (start, end)
 }
 
 /// What the workers of one search share.
