@@ -586,6 +586,8 @@ mod tests {
     fn pasting() {
         assert_eq!(encode_paste("a\nb\r\nc", TermMode::empty()), b"a\rb\rc");
         assert_eq!(encode_paste("hi", TermMode::BRACKETED_PASTE), b"\x1b[200~hi\x1b[201~");
+        // (⌘V with only an image on the clipboard: Claude Code reads the image then.)
+        assert_eq!(encode_paste("", TermMode::BRACKETED_PASTE), b"\x1b[200~\x1b[201~");
         assert_eq!(encode_paste("a\x1b[201~b\nc", TermMode::BRACKETED_PASTE), b"\x1b[200~a[201~b\nc\x1b[201~");
     }
 

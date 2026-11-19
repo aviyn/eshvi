@@ -1,6 +1,8 @@
 //! Files dragged onto the window from the Finder. On the explorer they copy
-//! into a folder (`explorer_view`); anywhere else they open in the editor, in
-//! the editor window under the pointer if there is one.
+//! into a folder (`explorer_view`); on a terminal (the agent's too) their
+//! paths are pasted, as Terminal does, so Claude Code attaches a dropped
+//! image; anywhere else they open in the editor, in the editor window under
+//! the pointer if there is one.
 
 use super::*;
 use std::path::PathBuf;
@@ -23,6 +25,22 @@ impl VimApp {
         self.editor.windows.values().find(|w| w.kind == WindowKind::Normal && self.window_rect(w).contains(pos))
     }
 
+    /// The shown terminal under `pos`, as the focus it would take.
+    fn drop_terminal(&self, pos: Pos2) -> Option<(Focus, Rect)> {
+        if self.over_agent(pos) {
+            let id = self.agents.tabs.current?;
+            let rect = self.agents.views.get(&id)?.rect();
+            return rect.contains(pos).then_some((Focus::Agent(id), rect));
+        }
+        if !self.over_bottom_panel(pos) {
+            return None;
+        }
+        self.bottom.shown_terminals().into_iter().find_map(|id| {
+            let rect = self.bottom.views.get(&id)?.rect();
+            rect.contains(pos).then_some((Focus::Terminal(id), rect))
+        })
+    }
+
     /// Whether `pos` is the explorer's to take.
     fn drop_is_explorers(&self, pos: Option<Pos2>) -> bool {
         self.side == SideView::Explorer && self.explorer_rect.zip(pos).is_some_and(|(r, p)| r.contains(p))
@@ -32,7 +50,8 @@ impl VimApp {
     pub(super) fn finish_file_drag(&mut self, ctx: &egui::Context) {
         let pos = self.explorer.drop_pos;
         if ctx.input(|i| !i.raw.hovered_files.is_empty()) && !self.drop_is_explorers(pos) {
-            if let Some(rect) = pos.and_then(|p| self.drop_window(p)).map(|w| self.window_rect(w)) {
+            let terminal = pos.and_then(|p| self.drop_terminal(p)).map(|(_, r)| r);
+            if let Some(rect) = terminal.or_else(|| pos.and_then(|p| self.drop_window(p)).map(|w| self.window_rect(w))) {
                 let accent = style::Chrome::from_editor(&self.editor).accent;
                 let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::unique("eshvi-file-drop")));
                 painter.rect_filled(rect, 0.0, accent.gamma_multiply(0.15));
@@ -40,6 +59,20 @@ impl VimApp {
         }
         let dropped: Vec<PathBuf> = ctx.input(|i| i.raw.dropped_files.iter().map(|f| f.path().to_path_buf()).filter(|p| p.is_absolute()).collect());
         if dropped.is_empty() || self.drop_is_explorers(pos) {
+            return;
+        }
+        if let Some((focus, _)) = pos.and_then(|p| self.drop_terminal(p)) {
+            let text = dropped.iter().map(|p| shell_escape(&p.to_string_lossy())).collect::<Vec<_>>().join(" ");
+            let view = match focus {
+                Focus::Agent(id) => self.agents.views.get_mut(&id),
+                Focus::Terminal(id) => self.bottom.views.get_mut(&id),
+                _ => None,
+            };
+            if let Some(view) = view {
+                view.paste(&text);
+            }
+            self.set_focus(focus);
+            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
             return;
         }
         let (paths, folders) = files_and_folders(dropped);
@@ -59,6 +92,19 @@ impl VimApp {
 /// What was dropped: the files to open, and the rest (folders).
 fn files_and_folders(paths: Vec<PathBuf>) -> (Vec<PathBuf>, Vec<PathBuf>) {
     paths.into_iter().partition(|p| p.is_file())
+}
+
+/// A path as Terminal pastes a dropped file's: one shell word, its special
+/// characters behind backslashes.
+fn shell_escape(path: &str) -> String {
+    let mut out = String::with_capacity(path.len());
+    for c in path.chars() {
+        if c.is_ascii() && !(c.is_ascii_alphanumeric() || "-_./+,:@%^=".contains(c)) {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    out
 }
 
 #[cfg(target_os = "macos")]
@@ -83,7 +129,15 @@ fn drag_position(ctx: &egui::Context, _frame: &eframe::Frame) -> Option<Pos2> {
 
 #[cfg(test)]
 mod tests {
-    use super::files_and_folders;
+    use super::{files_and_folders, shell_escape};
+
+    #[test]
+    fn dropped_paths_are_escaped_as_terminal_does() {
+        assert_eq!(shell_escape("/Users/me/Desktop/shot.png"), "/Users/me/Desktop/shot.png");
+        assert_eq!(shell_escape("/tmp/Screenshot 2026-11-19 at 9.06.59 PM.png"), r"/tmp/Screenshot\ 2026-11-19\ at\ 9.06.59\ PM.png");
+        assert_eq!(shell_escape("/tmp/a'b(c)&$d"), r"/tmp/a\'b\(c\)\&\$d");
+        assert_eq!(shell_escape("/tmp/café"), "/tmp/café");
+    }
 
     #[test]
     fn folders_are_kept_apart_from_files() {

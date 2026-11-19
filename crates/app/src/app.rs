@@ -827,6 +827,16 @@ impl VimApp {
 }
 
 impl eframe::App for VimApp {
+    /// ⌘V with an image and no text on the clipboard is an empty paste: a
+    /// terminal sends it, and a program like Claude Code then reads the image.
+    fn raw_input_hook(&mut self, _ctx: &egui::Context, raw_input: &mut egui::RawInput) {
+        for ev in &mut raw_input.events {
+            if matches!(ev, egui::Event::PasteImage(_)) {
+                *ev = egui::Event::Paste(String::new());
+            }
+        }
+    }
+
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let mut flushed = self.take_editor(ctx);
         while let Some(ev) = self.bridge.try_recv() {

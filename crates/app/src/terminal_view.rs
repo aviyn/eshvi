@@ -379,6 +379,19 @@ impl TerminalView {
     }
 
     /// This terminal's own cell, in points (its font's).
+    /// Where the view was drawn last frame.
+    pub fn rect(&self) -> Rect {
+        self.rect
+    }
+
+    /// Text pasted into the program (a dropped file's path), if it takes input.
+    pub fn paste(&mut self, text: &str) {
+        if self.term.takes_input() {
+            self.term.paste(text);
+            self.began_input();
+        }
+    }
+
     pub fn cell_size(&self) -> Vec2 {
         Vec2::new(self.metrics.width, self.metrics.height)
     }
@@ -652,11 +665,9 @@ impl TerminalView {
                     self.typed(ctx, text);
                 }
                 Event::Ime(ImeEvent::Commit(text)) => self.typed(ctx, text),
-                Event::Paste(_) if !self.term.takes_input() => {}
-                Event::Paste(text) => {
-                    self.term.paste(text);
-                    self.began_input();
-                }
+                // (Empty for ⌘V with no text on the clipboard, an image say: Claude Code
+                // takes an empty paste as the cue to read the image itself.)
+                Event::Paste(text) => self.paste(text),
                 Event::Copy => {
                     if let Some(text) = self.term.selection_text() {
                         ctx.copy_text(text);
@@ -1576,6 +1587,24 @@ mod tests {
         // Paste goes to the program (cat -v shows it).
         frame(&ctx, &mut view, &fonts, vec![Event::Paste("pasted\ntext".into())]);
         until("the paste", || rows_of(view.terminal()).iter().any(|r| r.contains("pasted")));
+    }
+
+    /// An empty paste (⌘V with only an image on the clipboard) reaches a program that asked
+    /// for bracketed paste as empty brackets: Claude Code reads the image then.
+    #[test]
+    fn an_empty_paste_is_sent_as_empty_brackets() {
+        let ctx = Context::default();
+        let fonts = crate::fonts::install(&ctx, &crate::fonts::FontSpec::default_with_size(14.0), None, None, None, None);
+        let script = "printf 'ready\\033[?2004h'; stty raw -echo; cat -v";
+        let t = Terminal::spawn(SpawnOptions::new(vec!["/bin/sh".into(), "-c".into(), script.into()], term::Size { cols: 40, rows: 5, cell_w: 8, cell_h: 16 })).unwrap();
+        let mut view = TerminalView::new(t);
+        frame(&ctx, &mut view, &fonts, vec![]);
+        until("bracketed paste", || view.terminal().mode().contains(term::TermMode::BRACKETED_PASTE));
+        frame(&ctx, &mut view, &fonts, vec![Event::Paste(String::new())]);
+        until("the empty paste", || rows_of(view.terminal()).iter().any(|r| r.contains("^[[200~^[[201~")));
+        // A dropped file's path, the same way.
+        view.paste("/tmp/a\\ b.png");
+        until("the path", || rows_of(view.terminal()).iter().any(|r| r.contains("^[[200~/tmp/a\\ b.png^[[201~")));
     }
 
     /// The program takes the mouse: a click is reported, and Shift selects anyway.

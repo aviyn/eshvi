@@ -427,6 +427,7 @@ impl VimApp {
                 Event::Ime(ImeEvent::Commit(text)) => keys.push_str(&input::escape_text(&text)),
                 Event::Copy => keys.push_str("<D-c>"),
                 Event::Cut => keys.push_str("<D-x>"),
+                Event::Paste(text) if text.is_empty() => {}
                 Event::Paste(text) => {
                     flush_keys(&mut keys, &self.bridge);
                     self.bridge.send(UiCommand::Paste(text));

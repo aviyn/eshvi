@@ -173,10 +173,15 @@ impl VimApp {
                     let event = match action.as_str() {
                         "copy" => Event::Copy,
                         "cut" => Event::Cut,
-                        "paste" => match arboard::Clipboard::new().and_then(|mut c| c.get_text()) {
-                            Ok(text) => Event::Paste(text),
-                            Err(_) => continue,
-                        },
+                        // (An image and no text: an empty paste, as for ⌘V.)
+                        "paste" => {
+                            let Ok(mut clip) = arboard::Clipboard::new() else { continue };
+                            match clip.get_text() {
+                                Ok(text) if !text.is_empty() => Event::Paste(text),
+                                _ if clip.get_image().is_ok() => Event::Paste(String::new()),
+                                _ => continue,
+                            }
+                        }
                         "select_all" => key(egui::Key::A, false),
                         "undo" => key(egui::Key::Z, false),
                         _ => key(egui::Key::Z, true),
