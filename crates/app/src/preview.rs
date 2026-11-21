@@ -367,6 +367,7 @@ fn nested(ui: &mut Ui, nest: &Nest, add: impl FnOnce(&mut Ui) -> Rect) -> Rect {
 
 /// A previewed buffer: its blocks, code laid out once.
 struct Doc {
+    text: String,
     blocks: Vec<Block>,
     code: Vec<Option<LayoutJob>>,
     cache: CommonMarkCache,
@@ -388,6 +389,8 @@ pub struct Previews {
     scrolled_top: Option<(i64, usize)>,
     /// The size the code in `docs` was laid out at (it is again when that changes).
     code_size: f32,
+    /// The shapes each window's blocks were last drawn as (in its layer).
+    drawn: HashMap<i64, Vec<Range<usize>>>,
 }
 
 impl Previews {
@@ -395,6 +398,7 @@ impl Previews {
     pub fn set_wins(&mut self, wins: Vec<PreviewWin>) {
         self.scrolled.retain(|w, _| wins.iter().any(|p| p.win == *w));
         self.views.retain(|w, _| wins.iter().any(|p| p.win == *w));
+        self.drawn.retain(|w, _| wins.iter().any(|p| p.win == *w));
         self.wins = wins;
     }
 
@@ -418,12 +422,31 @@ impl Previews {
 
     pub fn set_text(&mut self, buf: i64, text: &str) {
         let blocks = blocks(text);
-        let doc = Doc { code: vec![None; blocks.len()], blocks, cache: CommonMarkCache::default() };
+        let doc = Doc { text: text.to_owned(), code: vec![None; blocks.len()], blocks, cache: CommonMarkCache::default() };
         self.docs.insert(buf, doc);
     }
 
     pub fn win(&self, win: i64) -> Option<&PreviewWin> {
         self.wins.iter().find(|p| p.win == win)
+    }
+
+    /// The search's match under the cursor, as drawn last in window `win`:
+    /// the shapes of its block, and which of the drawn `text`s there it is
+    /// (as many come before it in the block's source).
+    pub fn current_match(&self, win: i64) -> Option<(Range<usize>, usize, String)> {
+        let p = self.win(win)?;
+        let m = p.search.as_ref()?.current.as_ref()?;
+        let doc = self.docs.get(&p.buf)?;
+        let i = doc.blocks.iter().position(|b| b.lines.contains(&m.line))?;
+        let line_at = |line: usize| -> Option<usize> {
+            match line {
+                1 => Some(0),
+                _ => doc.text.match_indices('\n').nth(line - 2).map(|(at, _)| at + 1),
+            }
+        };
+        let source = doc.text.get(line_at(doc.blocks[i].lines.start)?..line_at(m.line)? + m.col)?;
+        let nth = source.matches(m.text.as_str()).count();
+        Some((self.drawn.get(&win)?.get(i)?.clone(), nth, m.text.clone()))
     }
 
     /// Draw window `win`'s preview in `rect` (`ui` is already there).
@@ -459,12 +482,14 @@ impl Previews {
             by_user = true;
         }
         let mut ends = Vec::with_capacity(doc.blocks.len());
+        let mut drawn = Vec::with_capacity(doc.blocks.len());
         let viewer = || CommonMarkViewer::new().default_implicit_uri_scheme(base.clone());
         let shown = area.show(ui, |ui| {
             egui::Frame::new().inner_margin(egui::Margin::symmetric(MARGIN, 0)).show(ui, |ui| {
                 ui.add_space(12.0);
                 ui.spacing_mut().item_spacing.y = 8.0;
                 for (i, block) in doc.blocks.iter().enumerate() {
+                    let first = next_shape(ui);
                     let rect = nested(ui, &block.nest, |ui| match &block.body {
                         Body::Code { lang, text } => {
                             let job = doc.code[i]
@@ -495,6 +520,7 @@ impl Previews {
                         }
                     });
                     ends.push(rect.max.y);
+                    drawn.push(first..next_shape(ui));
                     if follow && Some(i) == target {
                         ui.scroll_to_rect(rect.expand(12.0), Some(egui::Align::TOP));
                     }
@@ -510,6 +536,7 @@ impl Previews {
             self.scrolled_top = doc.blocks.get(at).map(|b| (p.buf, b.lines.start));
         }
         self.views.insert(win, (top as i64, (top + shown.inner_rect.height()) as i64, shown.content_size.y as i64));
+        self.drawn.insert(win, drawn);
     }
 }
 
@@ -601,24 +628,48 @@ fn image_base(file: &str) -> String {
     format!("file://{}/", dir.trim_end_matches('/'))
 }
 
+/// The colors a search is marked in: a box in `bg`, the text again in `fg`.
+#[derive(Clone, Copy)]
+pub struct MarkColors {
+    pub bg: Color32,
+    pub fg: Option<Color32>,
+}
+
+/// The match under the cursor, to mark apart: the `nth` `text` drawn in
+/// `shapes` (see `Previews::current_match`).
+pub struct CurrentMark<'a> {
+    pub shapes: Range<usize>,
+    pub nth: usize,
+    pub text: &'a str,
+    pub colors: MarkColors,
+}
+
 /// Marks for `texts` (a search's matches) wherever the text drawn on `layer`
-/// since its `from`th shape has them: a box in `bg` behind each, and its
-/// text again on top in `fg` (the Search group's colors: the page's text
-/// color may not read on its background). A match that wraps gets a box on
-/// each row, its text left as it is.
-pub fn search_marks(ctx: &egui::Context, layer: egui::LayerId, from: usize, texts: &[String], bg: Color32, fg: Option<Color32>) -> Vec<egui::Shape> {
+/// since its `from`th shape has them: a box behind each, and its text again
+/// on top (the Search group's colors: the page's text color may not read on
+/// its background); the `current` match in its own colors, over the rest. A
+/// match that wraps gets a box on each row, its text left as it is.
+pub fn search_marks(ctx: &egui::Context, layer: egui::LayerId, from: usize, texts: &[String], colors: MarkColors, current: Option<CurrentMark>) -> Vec<egui::Shape> {
     use egui::text::CCursor;
-    let mut boxes = Vec::new();
-    let mut words = Vec::new();
+    // Each match: its shape, where in its text, its boxes, and its text
+    // again (if on one row) with the font and clip.
+    struct Found {
+        shape: usize,
+        at: usize,
+        needle: usize,
+        boxes: Vec<Rect>,
+        word: Option<(Pos2, FontId, Rect)>,
+    }
+    let mut found = Vec::new();
     ctx.graphics(|g| {
         let Some(list) = g.get(layer) else { return };
-        for entry in list.all_entries().skip(from) {
+        for (shape, entry) in list.all_entries().enumerate().skip(from) {
             let egui::Shape::Text(t) = &entry.shape else { continue };
             let text = t.galley.text();
-            for needle in texts.iter().filter(|n| !n.is_empty()) {
-                for (at, _) in text.match_indices(needle.as_str()) {
+            for (needle, word) in texts.iter().enumerate().filter(|(_, n)| !n.is_empty()) {
+                for (at, _) in text.match_indices(word.as_str()) {
                     let start = text[..at].chars().count();
-                    let end = start + needle.chars().count();
+                    let end = start + word.chars().count();
                     let pos = |c: usize| t.galley.pos_from_cursor(CCursor::new(c));
                     // One box per row the match is on.
                     let mut rows: Vec<Rect> = Vec::new();
@@ -636,26 +687,49 @@ pub fn search_marks(ctx: &egui::Context, layer: egui::LayerId, from: usize, text
                         }
                     }
                     let clip = entry.clip_rect;
-                    boxes.extend(rows.iter().map(|r| r.translate(t.pos.to_vec2())).filter(|r| clip.intersects(*r)));
                     // The text again, in the Search color, if on one row.
-                    if let (Some(fg), [row]) = (fg, rows.as_slice()) {
-                        let section = t.galley.job.sections.iter().find(|s| s.byte_range.start.0 <= at && at < s.byte_range.end.0);
-                        if let Some(font) = section.map(|s| s.format.font_id.clone()) {
-                            words.push((row.translate(t.pos.to_vec2()).min, needle.clone(), font, fg, clip));
+                    let word = match rows.as_slice() {
+                        [row] => {
+                            let section = t.galley.job.sections.iter().find(|s| s.byte_range.start.0 <= at && at < s.byte_range.end.0);
+                            section.map(|s| (row.translate(t.pos.to_vec2()).min, s.format.font_id.clone(), clip))
                         }
-                    }
+                        _ => None,
+                    };
+                    let boxes = rows.iter().map(|r| r.translate(t.pos.to_vec2())).filter(|r| clip.intersects(*r)).collect();
+                    found.push(Found { shape, at, needle, boxes, word });
                 }
             }
         }
     });
-    let mut shapes: Vec<egui::Shape> = boxes.into_iter().map(|r| egui::Shape::rect_filled(r.expand2(Vec2::new(1.0, 0.0)), style::RADIUS, bg)).collect();
-    for (at, word, font, fg, clip) in words {
-        let galley = ctx.fonts_mut(|f| f.layout_no_wrap(word, font, fg));
-        if clip.intersects(Rect::from_min_size(at, galley.size())) {
-            shapes.push(egui::Shape::galley(at, galley, fg));
+    // The current one: the nth of its text in its block's shapes, in the
+    // order drawn (the last there if fewer are drawn than in the source).
+    let current_at = current.as_ref().and_then(|c| {
+        let mut theirs: Vec<usize> =
+            (0..found.len()).filter(|&i| c.shapes.contains(&found[i].shape) && texts[found[i].needle] == c.text).collect();
+        theirs.sort_by_key(|&i| (found[i].shape, found[i].at));
+        theirs.get(c.nth).or(theirs.last()).copied()
+    });
+    let mut boxes = Vec::new();
+    let mut words = Vec::new();
+    let mut add = |f: &Found, colors: MarkColors| {
+        boxes.extend(f.boxes.iter().map(|r| egui::Shape::rect_filled(r.expand2(Vec2::new(1.0, 0.0)), style::RADIUS, colors.bg)));
+        if let (Some(fg), Some((at, font, clip))) = (colors.fg, &f.word) {
+            let galley = ctx.fonts_mut(|fonts| fonts.layout_no_wrap(texts[f.needle].clone(), font.clone(), fg));
+            if clip.intersects(Rect::from_min_size(*at, galley.size())) {
+                words.push(egui::Shape::galley(*at, galley, fg));
+            }
+        }
+    };
+    for (i, f) in found.iter().enumerate() {
+        if Some(i) != current_at {
+            add(f, colors);
         }
     }
-    shapes
+    if let (Some(i), Some(c)) = (current_at, &current) {
+        add(&found[i], c.colors);
+    }
+    boxes.extend(words);
+    boxes
 }
 
 #[cfg(test)]
@@ -671,7 +745,8 @@ mod tests {
             let layer = ui.layer_id();
             let from = ui.ctx().graphics(|g| g.get(layer).map_or(0, |l| l.all_entries().len()));
             label = ui.label("say hello and hello again").rect;
-            marks = search_marks(ui.ctx(), layer, from, &["hello".to_owned(), "absent".to_owned()], Color32::YELLOW, Some(Color32::BLACK));
+            let colors = MarkColors { bg: Color32::YELLOW, fg: Some(Color32::BLACK) };
+            marks = search_marks(ui.ctx(), layer, from, &["hello".to_owned(), "absent".to_owned()], colors, None);
         });
         out.textures_delta.clear();
         let boxes: Vec<Rect> = marks.iter().filter_map(|s| if let egui::Shape::Rect(r) = s { Some(r.rect) } else { None }).collect();
@@ -687,6 +762,48 @@ mod tests {
 
     /// A code block's copy button: a press copies the block, and the icon is
     /// a check for a second.
+    /// The match under the cursor: the nth of its text in its block, as many
+    /// as come before it in the block's source, marked in its own colors.
+    #[test]
+    fn the_current_match_is_marked_apart() {
+        use nvim_bridge::gui::{PreviewSearch, SearchMatch};
+        let md = "Say hi\n\nhello **hello**\nand hello\n";
+        let mut previews = Previews::default();
+        let current = SearchMatch { line: 4, col: 4, text: "hello".into() };
+        let search = PreviewSearch { texts: vec!["hello".into()], current: Some(current), ..Default::default() };
+        previews.set_wins(vec![PreviewWin { win: 1, buf: 7, line: 4, side: false, path: "/x/n.md".into(), search: Some(search) }]);
+        previews.set_text(7, md);
+        let chrome = Chrome::new(Color32::from_rgb(0x28, 0x2c, 0x34), Color32::from_rgb(0xab, 0xb2, 0xbf), Color32::from_rgb(0x4f, 0xa6, 0xed));
+        let mut icons = IconTextures::default();
+        let mut fonts: Option<GridFonts> = None;
+        let mut h = egui_kittest::Harness::builder().with_size(Vec2::new(400.0, 300.0)).with_accessibility_check(false).build_ui_state(
+            move |ui, (p, marks): &mut (Previews, Vec<egui::Shape>)| {
+                let f = fonts.get_or_insert_with(|| crate::fonts::install(ui.ctx(), &crate::fonts::FontSpec::default_with_size(13.0), None, None, None, None));
+                if !f.is_live(ui.ctx()) {
+                    return;
+                }
+                let layer = ui.layer_id();
+                let from = ui.ctx().graphics(|g| g.get(layer).map_or(0, |l| l.all_entries().len()));
+                p.show(ui, 1, None, f, Color32::WHITE, true, &chrome, &mut icons);
+                let (shapes, nth, text) = p.current_match(1).expect("a current match");
+                assert_eq!(nth, 2, "two before it in its paragraph");
+                let colors = MarkColors { bg: Color32::YELLOW, fg: None };
+                let current = CurrentMark { shapes, nth, text: &text, colors: MarkColors { bg: Color32::RED, fg: None } };
+                *marks = search_marks(ui.ctx(), layer, from, &["hello".to_owned()], colors, Some(current));
+            },
+            (previews, Vec::new()),
+        );
+        h.run();
+        let marks = &h.state().1;
+        let boxes: Vec<(Color32, Rect)> = marks.iter().filter_map(|s| if let egui::Shape::Rect(r) = s { Some((r.fill, r.rect)) } else { None }).collect();
+        assert_eq!(boxes.len(), 3, "{boxes:?}");
+        let red: Vec<_> = boxes.iter().filter(|(c, _)| *c == Color32::RED).collect();
+        assert_eq!(red.len(), 1, "one current: {boxes:?}");
+        // The last drawn (on top), and the third in the paragraph (one row).
+        assert_eq!(boxes.last().unwrap().0, Color32::RED);
+        assert!(boxes.iter().all(|(_, r)| r.min.x <= red[0].1.min.x), "{boxes:?}");
+    }
+
     #[test]
     fn the_copy_button_copies_the_block() {
         let md = "Intro\n\n```rust\nfn main() {}\nlet x = 1;\n```\n";

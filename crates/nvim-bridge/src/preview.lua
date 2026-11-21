@@ -6,7 +6,8 @@
 --   :EshviPreview [toggle]  this window in place
 --   :EshviPreview side      a preview beside it (again: closes it)
 --   :EshviPreview off       this window back to its text
--- Reports: gui_preview {wins = {{win, buf, line, side, path}}} (this tab
+--   :EshviPreview nohlsearch  :nohlsearch, and the previews told
+-- Reports: gui_preview {wins = {{win, buf, line, side, path, search}}} (this tab
 -- page's previews: the source buffer, its file, the line to show), gui_preview_text
 -- {buf, text} (a previewed buffer's text, again as it changes).
 local chan = ...
@@ -28,20 +29,19 @@ local function previewed(win)
   end
 end
 
--- The line a preview shows: in place, its window's cursor line; beside,
--- the cursor line of the window showing the source (the current one if it
--- does, else the last one left).
-local function source_line(buf)
+-- The cursor a preview beside its file follows: that of the window showing
+-- the source (the current one if it does, else the last one left).
+local function source_cursor(buf)
   local cur = vim.api.nvim_get_current_win()
   if vim.api.nvim_win_get_buf(cur) == buf then
-    return vim.api.nvim_win_get_cursor(cur)[1]
+    return vim.api.nvim_win_get_cursor(cur)
   end
   for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
     if vim.api.nvim_win_get_buf(w) == buf and not vim.w[w].eshvi_preview_of then
-      return vim.api.nvim_win_get_cursor(w)[1]
+      return vim.api.nvim_win_get_cursor(w)
     end
   end
-  return 1
+  return { 1, 0 }
 end
 
 -- Text sent, by buffer: changedtick then, so it goes again only when it
@@ -59,8 +59,9 @@ end
 
 -- The search highlighted in `buf` ('hlsearch', not :nohlsearch'd): each
 -- different text it matches there (the GUI marks them in the rendered page;
--- Vim's pattern isn't translated) and the Search group's colors.
-local function search_of(buf)
+-- Vim's pattern isn't translated), the Search group's colors, and the match
+-- under `cursor` ({line, col}, as nvim_win_get_cursor) with CurSearch's.
+local function search_of(buf, cursor)
   if vim.v.hlsearch ~= 1 or not vim.o.hlsearch then
     return nil
   end
@@ -76,7 +77,12 @@ local function search_of(buf)
   if not ok then
     return nil
   end
-  local seen, texts = {}, {}
+  local seen, texts, current = {}, {}, nil
+  for _, m in ipairs(found) do
+    if m.lnum == cursor[1] and m.byteidx <= cursor[2] and cursor[2] < m.byteidx + #m.text then
+      current = { line = m.lnum, col = m.byteidx, text = m.text }
+    end
+  end
   for _, m in ipairs(found) do
     if m.text ~= '' and not seen[m.text] then
       seen[m.text] = true
@@ -90,7 +96,11 @@ local function search_of(buf)
     return nil
   end
   local hl = vim.api.nvim_get_hl(0, { name = 'Search', link = false })
-  return { texts = texts, bg = hl.bg, fg = hl.fg }
+  local cur = vim.api.nvim_get_hl(0, { name = 'CurSearch', link = false })
+  if not cur.bg then
+    cur = vim.api.nvim_get_hl(0, { name = 'IncSearch', link = false })
+  end
+  return { texts = texts, bg = hl.bg, fg = hl.fg, current = current, cur_bg = cur.bg, cur_fg = cur.fg }
 end
 
 local last_report = nil
@@ -99,9 +109,10 @@ local function report()
   for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
     local buf, side = previewed(w)
     if buf and vim.api.nvim_buf_is_valid(buf) then
-      local line = side and source_line(buf) or vim.api.nvim_win_get_cursor(w)[1]
+      -- In place: its window's cursor.
+      local cursor = side and source_cursor(buf) or vim.api.nvim_win_get_cursor(w)
       local path = vim.api.nvim_buf_get_name(buf)
-      table.insert(wins, { win = w, buf = buf, line = line, side = side, path = path, search = search_of(buf) })
+      table.insert(wins, { win = w, buf = buf, line = cursor[1], side = side, path = path, search = search_of(buf, cursor) })
       send_text(buf)
     end
   end
@@ -187,6 +198,11 @@ local actions = {
   off = function()
     in_place(vim.api.nvim_get_current_win(), false)
   end,
+  -- Esc in an in-place preview while a search is marked: the marks go.
+  nohlsearch = function()
+    vim.cmd.nohlsearch()
+    report()
+  end,
 }
 
 vim.api.nvim_create_user_command('EshviPreview', function(o)
@@ -198,7 +214,7 @@ vim.api.nvim_create_user_command('EshviPreview', function(o)
 end, {
   nargs = '?',
   complete = function()
-    return { 'toggle', 'side', 'off' }
+    return { 'toggle', 'side', 'off', 'nohlsearch' }
   end,
   desc = 'eshvi: Markdown preview (in place, or beside)',
 })

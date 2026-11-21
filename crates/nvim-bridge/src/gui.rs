@@ -595,12 +595,24 @@ pub struct PreviewWin {
 }
 
 /// A search to mark in a preview: the different texts it matches in the
-/// buffer, and the Search group's colors (0xRRGGBB).
+/// buffer, and the Search group's colors (0xRRGGBB); the match under the
+/// cursor, and CurSearch's colors.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PreviewSearch {
     pub texts: Vec<String>,
     pub bg: Option<u32>,
     pub fg: Option<u32>,
+    pub current: Option<SearchMatch>,
+    pub cur_bg: Option<u32>,
+    pub cur_fg: Option<u32>,
+}
+
+/// One match of a search: its line (1-based), its byte column (0-based) and text.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SearchMatch {
+    pub line: usize,
+    pub col: usize,
+    pub text: String,
 }
 
 /// One diagnostic of the native Problems list. Lines and columns count from 1.
@@ -1012,6 +1024,15 @@ pub fn parse(name: &str, args: &[Value]) -> Option<GuiEvent> {
                             texts: list(s, "texts").iter().filter_map(|t| t.as_str().map(str::to_owned)).collect(),
                             bg: get(s, "bg").and_then(Value::as_u64).map(|c| c as u32),
                             fg: get(s, "fg").and_then(Value::as_u64).map(|c| c as u32),
+                            current: get(s, "current").filter(|c| c.is_map()).and_then(|c| {
+                                Some(SearchMatch {
+                                    line: get(c, "line")?.as_u64()? as usize,
+                                    col: get(c, "col")?.as_u64()? as usize,
+                                    text: string(c, "text"),
+                                })
+                            }),
+                            cur_bg: get(s, "cur_bg").and_then(Value::as_u64).map(|c| c as u32),
+                            cur_fg: get(s, "cur_fg").and_then(Value::as_u64).map(|c| c as u32),
                         }),
                     })
                 })

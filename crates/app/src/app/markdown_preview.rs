@@ -85,8 +85,13 @@ impl VimApp {
         self.preview.show(&mut child, w.win, syntax.as_ref(), &fonts, fg, scrolls, &chrome, &mut self.icons);
         // The search, marked where its matches are in the page.
         if let Some(search) = self.preview.win(w.win).and_then(|p| p.search.clone()) {
-            let bg = search.bg.map_or(crate::popup::mix(bg, egui::Color32::YELLOW, 0.5), rgb);
-            let marks = crate::preview::search_marks(ui.ctx(), painter.layer_id(), first_shape, &search.texts, bg, search.fg.map(rgb));
+            use crate::preview::{CurrentMark, MarkColors};
+            let colors = MarkColors { bg: search.bg.map_or(crate::popup::mix(bg, egui::Color32::YELLOW, 0.5), rgb), fg: search.fg.map(rgb) };
+            // The one under the cursor: CurSearch's colors (`n` goes to it).
+            let cur = MarkColors { bg: search.cur_bg.map_or(crate::popup::mix(bg, egui::Color32::from_rgb(0xff, 0x8c, 0x00), 0.8), rgb), fg: search.cur_fg.map(rgb) };
+            let current = self.preview.current_match(w.win);
+            let current = current.as_ref().map(|(shapes, nth, text)| CurrentMark { shapes: shapes.clone(), nth: *nth, text, colors: cur });
+            let marks = crate::preview::search_marks(ui.ctx(), painter.layer_id(), first_shape, &search.texts, colors, current);
             painter.with_clip_rect(rect.intersect(painter.clip_rect())).extend(marks);
         }
         self.follow_preview_scroll(ui.ctx());

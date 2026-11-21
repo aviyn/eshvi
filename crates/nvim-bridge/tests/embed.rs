@@ -1896,6 +1896,18 @@ fn markdown_previews_are_reported_and_follow_the_file() {
     bridge.send(UiCommand::Input("/T\\w*<CR>".into()));
     let w = previews(&bridge, &mut ed, &|w| w.len() == 1 && w[0].search.is_some());
     assert_eq!(w[0].search.as_ref().unwrap().texts, ["Title", "Two"], "{w:?}");
+    // The match under the cursor, to be marked apart; `n` moves it.
+    let at = |w: &[PreviewWin]| w[0].search.as_ref().and_then(|s| s.current.clone()).map(|m| (m.line, m.col, m.text));
+    assert_eq!(at(&w), Some((1, 2, "Title".into())), "{w:?}");
+    bridge.send(UiCommand::Input("n".into()));
+    previews(&bridge, &mut ed, &|w| w.len() == 1 && at(w) == Some((5, 3, "Two".into())));
+    // Esc in the preview (`EshviPreview nohlsearch`) takes it away, and
+    // the preview stays.
+    bridge.send(UiCommand::Command("EshviPreview nohlsearch".into()));
+    previews(&bridge, &mut ed, &|w| w.len() == 1 && w[0].search.is_none());
+    // So does :nohlsearch.
+    bridge.send(UiCommand::Input("n".into()));
+    previews(&bridge, &mut ed, &|w| w.len() == 1 && w[0].search.is_some());
     bridge.send(UiCommand::Input(":nohlsearch<CR>".into()));
     previews(&bridge, &mut ed, &|w| w.len() == 1 && w[0].search.is_none());
     bridge.send(UiCommand::Input("gg".into()));

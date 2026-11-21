@@ -129,12 +129,12 @@ impl VimApp {
             || (self.explorer.visible && self.side == SideView::Git && self.scm.over_tooltip(pos))
     }
 
-    /// An in-place Markdown preview has the keyboard, and Neovim waits for
+    /// The in-place Markdown preview that has the keyboard, if Neovim waits for
     /// nothing (no operator, no keys of a mapping pending: which-key's
     /// popup is Esc's then).
-    fn in_place_preview_focused(&self) -> bool {
+    fn in_place_preview_focused(&self) -> Option<&nvim_bridge::gui::PreviewWin> {
         let win = self.editor.windows.get(&self.editor.cursor.grid).map(|w| w.win);
-        !waits_for_keys(&self.editor) && win.and_then(|w| self.preview.win(w)).is_some_and(|p| !p.side)
+        win.and_then(|w| self.preview.win(w)).filter(|p| !p.side && !waits_for_keys(&self.editor))
     }
 
     fn over_popup_menu(&self, pos: Pos2) -> bool {
@@ -405,12 +405,15 @@ impl VimApp {
                     self.pum.scroll_doc(if key == egui::Key::F { 1.0 } else { -1.0 });
                     ctx.request_repaint();
                 }
-                // Esc in a Markdown preview shown in place: back to the text.
+                // Esc in a Markdown preview shown in place: a search marked
+                // there goes (:nohlsearch); else back to the text.
                 Event::Key { key: egui::Key::Escape, pressed: true, modifiers, .. }
-                    if !modifiers.any() && self.in_place_preview_focused() =>
+                    if !modifiers.any() && self.in_place_preview_focused().is_some() =>
                 {
                     flush_keys(&mut keys, &self.bridge);
-                    self.bridge.send(UiCommand::Command("EshviPreview off".into()));
+                    let searched = self.in_place_preview_focused().is_some_and(|p| p.search.is_some());
+                    let action = if searched { "nohlsearch" } else { "off" };
+                    self.bridge.send(UiCommand::Command(format!("EshviPreview {action}")));
                 }
                 Event::Key { key, physical_key, pressed: true, modifiers, .. } => {
                     if key == egui::Key::Escape {
