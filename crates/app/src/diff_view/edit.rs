@@ -5,6 +5,7 @@
 //! the rest), and tells the view how it went (`refresh`, `cancel`).
 
 use std::ops::Range;
+use std::time::Instant;
 
 use super::model::{FileKind, Row, SplitRow};
 use super::{Action, Cursor, DiffView, Mode, Rows, Side, Status};
@@ -103,6 +104,10 @@ impl Mode {
         }
     }
 }
+
+/// How long an accepted file's buttons stay away waiting for it to be read
+/// again (an accept that failed leaves them back).
+const ACCEPT_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// What git does to whole files.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -236,7 +241,7 @@ impl DiffView {
     /// so they have to be shown as lines).
     pub fn file_action_offered(&self, what: Do, i: usize) -> bool {
         let Some(s) = self.sections.get(i) else { return false };
-        if s.loaded.is_none() || self.mode.file_actions().is_empty() {
+        if s.loaded.is_none() || self.mode.file_actions().is_empty() || s.accepting.is_some_and(|(_, when)| when.elapsed() < ACCEPT_WAIT) {
             return false;
         }
         let identical = s.diff().is_some_and(|d| d.is_identical());
@@ -264,6 +269,10 @@ impl DiffView {
         }
         self.armed = None;
         let edit = if file_level { self.file_edit(what, c.section)? } else { self.change_edit(what, c.section, op?)? };
+        if what == Do::Accept {
+            // (It takes git a moment: the buttons go now.)
+            self.sections[c.section].accepting = Some((self.serial, Instant::now()));
+        }
         let ordinal = op.and_then(|op| self.sections[c.section].diff().map(|d| d.ordinal_of(op)));
         self.place = ordinal.map(|ordinal| Place { path: edit.path().to_owned(), ordinal, armed: false });
         Some(Action::Edit(edit))

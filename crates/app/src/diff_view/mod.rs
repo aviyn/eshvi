@@ -137,11 +137,14 @@ pub struct Section {
     pub rows: Option<(Layout, usize, Rows)>,
     /// Colors are asked for the lines a fold opened.
     colors_asked: bool,
+    /// Accept was pressed (at the latest request then, and when): its buttons
+    /// are gone until the file is read again after it (or it takes too long).
+    accepting: Option<(u64, Instant)>,
 }
 
 impl Section {
     fn new(spec: FileSpec) -> Self {
-        Self { spec, loaded: None, requested: false, serial: 0, stale: false, folded: false, expanded: BTreeSet::new(), rows: None, colors_asked: false }
+        Self { spec, loaded: None, requested: false, serial: 0, stale: false, folded: false, expanded: BTreeSet::new(), rows: None, colors_asked: false, accepting: None }
     }
 
     pub fn diff(&self) -> Option<&model::Diff> {
@@ -385,6 +388,7 @@ impl DiffView {
                 let Some(s) = self.sections.get_mut(index).filter(|s| s.serial == serial) else { return };
                 s.loaded = Some(loaded);
                 s.requested = false;
+                s.accepting = s.accepting.filter(|(at, _)| serial <= *at);
                 s.colors_asked = false;
                 s.rows = None;
                 // The folds the click opened belong to the old diff.

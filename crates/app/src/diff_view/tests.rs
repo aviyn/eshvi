@@ -1067,9 +1067,15 @@ fn reverting_a_change_names_its_lines_for_neovim() {
     // The file: every line.
     let Edit::Revert { start, expect, put, .. } = edit_of(v.do_action(Do::RevertFile, Cursor { section: 0, row: None })) else { panic!() };
     assert_eq!((start, expect.len(), put.len(), expect[4].as_str(), put[4].as_str()), (0, 30, 30, "changed 5", "line 5"));
-    assert_eq!(edit_of(v.do_action(Do::Accept, Cursor { section: 0, row: None })), Edit::Accept { path: "a.txt".into() });
     // The buttons offered: not for a file with no changes.
     assert!(v.file_action_offered(Do::RevertFile, 0) && v.file_action_offered(Do::Accept, 0));
+    assert_eq!(edit_of(v.do_action(Do::Accept, Cursor { section: 0, row: None })), Edit::Accept { path: "a.txt".into() });
+    // Accepted: the buttons go at once (git takes a moment), until the file
+    // is read again against the snapshot the accept made.
+    assert!(!v.file_action_offered(Do::RevertFile, 0) && !v.file_action_offered(Do::Accept, 0));
+    v.rebase("HEAD~0");
+    settle(&mut v);
+    assert!(v.file_action_offered(Do::Accept, 0), "read again: what it shows decides");
     let same = mode_view(&r, Mode::Agents, vec![file("a.txt", Side::Disk, Side::Disk)]);
     assert!(!same.file_action_offered(Do::Accept, 0) && !same.file_action_offered(Do::RevertFile, 0));
 }
