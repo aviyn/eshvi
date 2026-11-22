@@ -197,7 +197,8 @@ pub struct SpawnOptions {
     pub restore_notify: bool,
     /// Use one global statusline ('laststatus' 3).
     pub global_statusline: bool,
-    /// Give normal file windows a filename winbar.
+    /// Give normal file windows a filename winbar (the file tab; else the GUI draws a pill
+    /// over the text, and the side preview has no winbar either).
     pub winbar: bool,
     /// Provide `:EshviTerminal`, `:EshviPanel`, `:EshviProblems` and `:EshviGitOutput` (the GUI's bottom panel;
     /// the commands only tell the GUI, and `gui_problems` carries the diagnostics).
@@ -566,7 +567,7 @@ async fn run(
     if let Err(e) = nvim.exec_lua(include_str!("blink_docs.lua"), vec![Value::from(chan)]).await {
         log::warn!("blink_docs.lua failed: {e}");
     }
-    if let Err(e) = nvim.exec_lua(include_str!("preview.lua"), vec![Value::from(chan)]).await {
+    if let Err(e) = nvim.exec_lua(include_str!("preview.lua"), vec![Value::from(chan), opts.winbar.into()]).await {
         log::warn!("preview.lua failed: {e}");
     }
     if let Err(e) = nvim.exec_lua(include_str!("diff.lua"), vec![Value::from(chan)]).await {

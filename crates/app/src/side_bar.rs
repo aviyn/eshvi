@@ -147,6 +147,7 @@ fn badge_text(count: usize) -> Option<String> {
 /// Source Control one with `count` changes in a badge), then the title,
 /// cut with "…" before `reserved_right` points at the right, which the
 /// view keeps for its own buttons, and dropped when it has no room.
+/// The row is `height` tall (every strip's, `[layout] tab_height`).
 /// Returns the row and the view whose button was clicked.
 #[allow(clippy::too_many_arguments)]
 pub fn header(
@@ -155,13 +156,16 @@ pub fn header(
     count: usize,
     reserved_right: f32,
     row_h: f32,
+    height: f32,
     font: &FontId,
     colors: &ExplorerColors,
     extra: &[SideInfo],
     icons: &mut IconTextures,
 ) -> (Rect, Option<SideView>) {
-    let (row, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), row_h * 1.2), Sense::hover());
+    let (row, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), height), Sense::hover());
     let chrome = colors.chrome();
+    // (Buttons keep inside a low row.)
+    let side = row_h.min(height);
     let mut clicked = None;
     let mut x = row.min.x + style::GAP;
     for v in views(extra) {
@@ -170,11 +174,11 @@ pub fn header(
             Some(i) => (if i.tooltip.is_empty() { i.title.as_str() } else { i.tooltip.as_str() }, Glyph::Codicon(&i.icon)),
             None => (v.built_in_tooltip(), Glyph::Drawn(v.built_in_icon())),
         };
-        let rect = Rect::from_min_size(Pos2::new(x, row.center().y - row_h / 2.0), Vec2::splat(row_h));
+        let rect = Rect::from_min_size(Pos2::new(x, row.center().y - side / 2.0), Vec2::splat(side));
         let resp = ui.interact(rect, Id::unique(("eshvi-side-view", v)), Sense::CLICK).on_hover_text(tooltip);
         let on = v == view;
         style::paint_button_fill(ui.painter(), rect.shrink(2.0), &chrome, colors.bg, resp.hovered(), on);
-        let (size, color) = (style::icon_size(row_h), chrome.text(on || resp.hovered()));
+        let (size, color) = (style::icon_size(side), chrome.text(on || resp.hovered()));
         match glyph {
             Glyph::Drawn(icon) => style::paint_icon(ui.painter(), icon, rect.center(), size, color),
             Glyph::Codicon(name) => icons.paint_codicon(ui.painter(), name, rect.center(), size, color),

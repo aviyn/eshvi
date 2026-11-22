@@ -234,12 +234,13 @@ impl BottomPanel {
     }
 }
 
-/// The height of the panel in points: what was set, else `rows` of text and the strip;
-/// never under 4 rows or over what leaves 6 rows to the editor.
-pub(super) fn clamp_height(wanted: Option<f32>, rows: u32, row: f32, available: f32) -> f32 {
-    let min = row * 4.0;
+/// The height of the panel in points: what was set, else `rows` of text and the strip
+/// (`strip` tall, as every strip is); never under 3 rows and the strip or over what leaves
+/// 6 rows to the editor.
+pub(super) fn clamp_height(wanted: Option<f32>, rows: u32, row: f32, strip: f32, available: f32) -> f32 {
+    let min = row * 3.0 + strip;
     let max = (available - row * 6.0).max(min);
-    wanted.unwrap_or((rows as f32 + 1.0) * row).clamp(min, max)
+    wanted.unwrap_or(rows as f32 * row + strip).clamp(min, max)
 }
 
 /// The strip's tabs.
@@ -577,7 +578,7 @@ impl VimApp {
     /// The panel's height in points now.
     pub(super) fn bottom_height(&self, available: f32) -> f32 {
         let row = self.renderer.metrics().height;
-        clamp_height(self.bottom.height, self.config.terminal.height.clamp(3, 100), row, available)
+        clamp_height(self.bottom.height, self.config.terminal.height.clamp(3, 100), row, self.tab_height(), available)
     }
 
     // Focus.
@@ -882,7 +883,7 @@ impl VimApp {
             "split" => self.split_terminal(ctx),
             "height" => {
                 if let Some(rows) = arg.and_then(|a| a.parse::<f32>().ok()) {
-                    self.bottom.height = Some((rows.max(3.0) + 1.0) * self.renderer.metrics().height);
+                    self.bottom.height = Some(rows.max(3.0) * self.renderer.metrics().height + self.tab_height());
                 }
             }
             other => self.editor.push_message("emsg", &format!("EshviTerminal: unknown action {other}")),
@@ -1283,11 +1284,10 @@ impl VimApp {
                 self.bottom.view = View::Problems;
             }
         }
-        let m = self.renderer.metrics();
         let chrome = Chrome::from_editor(&self.editor);
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, 0.0, chrome.panel);
-        let strip = Rect::from_min_size(rect.min, Vec2::new(rect.width(), m.height));
+        let strip = Rect::from_min_size(rect.min, Vec2::new(rect.width(), self.tab_height()));
         let content = Rect::from_min_max(Pos2::new(rect.min.x, strip.max.y), rect.max);
         let colors = self.problem_colors();
         let problems = &self.bottom.problems;
@@ -1632,13 +1632,17 @@ mod tests {
     #[test]
     fn the_height_is_rows_until_dragged_and_stays_between_its_limits() {
         // 12 rows of text and the strip, 20 points each.
-        assert_eq!(clamp_height(None, 12, 20.0, 800.0), 260.0);
-        assert_eq!(clamp_height(Some(300.0), 12, 20.0, 800.0), 300.0);
-        // Not under 4 rows, nor so tall that the editor has under 6.
-        assert_eq!(clamp_height(Some(10.0), 12, 20.0, 800.0), 80.0);
-        assert_eq!(clamp_height(Some(790.0), 12, 20.0, 800.0), 680.0);
+        assert_eq!(clamp_height(None, 12, 20.0, 20.0, 800.0), 260.0);
+        assert_eq!(clamp_height(Some(300.0), 12, 20.0, 20.0, 800.0), 300.0);
+        // Not under 3 rows and the strip, nor so tall that the editor has under 6.
+        assert_eq!(clamp_height(Some(10.0), 12, 20.0, 20.0, 800.0), 80.0);
+        assert_eq!(clamp_height(Some(790.0), 12, 20.0, 20.0, 800.0), 680.0);
         // A window too short for both: the minimum.
-        assert_eq!(clamp_height(None, 12, 20.0, 100.0), 80.0);
+        assert_eq!(clamp_height(None, 12, 20.0, 20.0, 100.0), 80.0);
+        // A taller strip (`[layout] tab_height`) takes its own height, not a row's.
+        assert_eq!(clamp_height(None, 12, 20.0, 31.0, 800.0), 271.0);
+        assert_eq!(clamp_height(Some(10.0), 12, 20.0, 31.0, 800.0), 91.0);
+        assert_eq!(clamp_height(None, 12, 20.0, 16.0, 800.0), 256.0);
     }
 
     #[test]

@@ -724,6 +724,55 @@ fn layout_global_statusline_and_winbar() {
     bridge.send(UiCommand::Command("qa!".into()));
 }
 
+/// In the pill modes (`winbar: false`: the GUI draws a file's name over its
+/// text) no window has a winbar, a lower one has no blank row above it, and
+/// the side preview has none either; in the tab mode they do. A preview
+/// beside its file closes with `Eshvi.close_window` (its "x").
+#[test]
+fn pill_mode_has_no_winbar_and_tab_mode_has() {
+    if !nvim_available() {
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("eshvi-pill-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("doc.md");
+    std::fs::write(&file, "# Title\n").unwrap();
+    for tab in [false, true] {
+        let bridge = Bridge::spawn(
+            SpawnOptions {
+                args: plain_shell(vec!["--clean".into(), "-n".into(), file.to_str().unwrap().into()]),
+                width: 80,
+                height: 20,
+                global_statusline: true,
+                winbar: tab,
+                ..Default::default()
+            },
+            Arc::new(|| {}),
+        )
+        .unwrap();
+        let mut ed = Editor::new();
+        assert!(pump(&bridge, &mut ed, |ed| ed.windows.values().any(|w| w.kind == grid::WindowKind::Normal)));
+        bridge.send(UiCommand::Input(":vsplit | split<CR>".into()));
+        let normals = |ed: &Editor| -> Vec<grid::Window> {
+            ed.windows.values().filter(|w| w.kind == grid::WindowKind::Normal && !w.hidden).cloned().collect()
+        };
+        assert!(pump(&bridge, &mut ed, |ed| normals(ed).len() == 3));
+        // Neovim's winbar is a top margin: the tab mode's windows on top have it.
+        let tops = |ed: &Editor| -> Vec<usize> { normals(ed).iter().map(|w| w.margins.top).collect() };
+        let ok = pump(&bridge, &mut ed, |ed| if tab { tops(ed).contains(&1) } else { tops(ed).iter().all(|&t| t == 0) });
+        assert!(ok, "tab {tab}: {:?}", tops(&ed));
+        bridge.send(UiCommand::Input("<Cmd>EshviPreview side<CR>".into()));
+        let side = "(function() for _, w in ipairs(vim.api.nvim_list_wins()) do if vim.w[w].eshvi_preview_of then return w end end return 0 end)()";
+        wait_for(&bridge, &mut ed, &format!("{side} > 0"), "true");
+        let want = if tab { "Preview doc.md" } else { "" };
+        assert_eq!(ask(&bridge, &mut ed, &format!("vim.wo[{side}].winbar")), want);
+        bridge.send(UiCommand::Command(format!("lua Eshvi.close_window({side})")));
+        wait_for(&bridge, &mut ed, &format!("{side} == 0"), "true");
+        bridge.send(UiCommand::Command("qa!".into()));
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 #[test]
 fn explorer_cwd_buffer_command_and_open_file() {
     use nvim_bridge::gui::GuiEvent;

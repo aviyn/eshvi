@@ -7,10 +7,11 @@
 --   :EshviPreview side      a preview beside it (again: closes it)
 --   :EshviPreview off       this window back to its text
 --   :EshviPreview nohlsearch  :nohlsearch, and the previews told
--- Reports: gui_preview {wins = {{win, buf, line, side, path, search}}} (this tab
+-- With a winbar (`tab_winbar`, the file tab) the side window has one; else the GUI's pill says
+-- it. Reports: gui_preview {wins = {{win, buf, line, side, path, search}}} (this tab
 -- page's previews: the source buffer, its file, the line to show), gui_preview_text
 -- {buf, text} (a previewed buffer's text, again as it changes).
-local chan = ...
+local chan, tab_winbar = ...
 
 local group = vim.api.nvim_create_augroup('eshvi_preview', { clear = true })
 
@@ -167,7 +168,9 @@ local function side()
   vim.bo[buf].modifiable = false
   vim.bo[buf].filetype = 'eshvi_preview'
   vim.w[win].eshvi_preview_of = src
-  vim.wo[win].winbar = 'Preview ' .. vim.fn.fnamemodify(vim.api.nvim_buf_get_name(src), ':t')
+  if tab_winbar then
+    vim.wo[win].winbar = 'Preview ' .. vim.fn.fnamemodify(vim.api.nvim_buf_get_name(src), ':t')
+  end
   for _, opt in ipairs({ 'number', 'relativenumber', 'cursorline', 'list', 'spell' }) do
     vim.wo[win][opt] = false
   end

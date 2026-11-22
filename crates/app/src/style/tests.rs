@@ -7,6 +7,7 @@ use egui_kittest::Harness;
 /// and aren't in it.)
 const CHROME: &[(&str, &str)] = &[
     ("app/tabs.rs", include_str!("../app/tabs.rs")),
+    ("app/file_pill.rs", include_str!("../app/file_pill.rs")),
     ("app/bottom_panel.rs", include_str!("../app/bottom_panel.rs")),
     ("app/chrome.rs", include_str!("../app/chrome.rs")),
     ("app/status.rs", include_str!("../app/status.rs")),

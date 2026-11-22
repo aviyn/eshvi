@@ -765,6 +765,11 @@ function Eshvi.close_window(win)
   if not vim.api.nvim_win_is_valid(win) or Eshvi.close_diff(win) then
     return
   end
+  -- A preview beside its file just closes.
+  if vim.w[win].eshvi_preview_of then
+    pcall(vim.api.nvim_win_close, win, true)
+    return
+  end
   local files = 0
   for _, w in ipairs(vim.api.nvim_tabpage_list_wins(vim.api.nvim_win_get_tabpage(win))) do
     if vim.api.nvim_win_get_config(w).relative == '' and vim.bo[vim.api.nvim_win_get_buf(w)].buftype == '' then

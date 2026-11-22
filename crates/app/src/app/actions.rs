@@ -56,7 +56,7 @@ impl VimApp {
                     // (Collapse All, and the source's buttons before it.)
                     SideView::Tree(_) => ExplorerView::header_reserved(row_h) + row_h * extra.map_or(0, |i| i.header_buttons()) as f32,
                 };
-                let (header, picked) = side_bar::header(ui, side, count, reserved, row_h, &font, &colors, self.side_views.as_slice(), self.explorer.icons());
+                let (header, picked) = side_bar::header(ui, side, count, reserved, row_h, self.tab_height(), &font, &colors, self.side_views.as_slice(), self.explorer.icons());
                 match side {
                     SideView::Tree(_) => {
                         let actions = match extra {

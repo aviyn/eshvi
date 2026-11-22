@@ -227,9 +227,9 @@ impl VimApp {
             f.size = self.status_font_size + 1.0;
             f
         };
-        // As tall as a window's file tab (one editor row), and laid out
+        // As tall as every strip, and laid out
         // like it: icon, name, then the close button.
-        let height = self.renderer.metrics().height.round();
+        let height = self.tab_height();
         let tabs = self.editor.tabs.clone();
         let current = self.editor.current_tab;
         let mut command = None;

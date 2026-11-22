@@ -702,7 +702,7 @@ fn pic_harness_mode(name: &str, theme: &str, layout: Layout, size: Vec2, mode: M
             move |ui, s: &mut Pic| {
                 ui.ctx().set_theme(if s.chrome.bg.r() < 128 { egui::Theme::Dark } else { egui::Theme::Light });
                 let code = |_: bool, _: bool| (FontId::monospace(13.0), false);
-                let look = Look { chrome: s.chrome, colors: s.colors, ui: FontId::proportional(13.0), code: &code, row_h: 19.0, char_w: 7.8 };
+                let look = Look { chrome: s.chrome, colors: s.colors, ui: FontId::proportional(13.0), code: &code, row_h: 19.0, char_w: 7.8, bar_h: 31.0 };
                 // (The pictures of the bar are inside the window, which the others reach past by the margin.)
                 let inset = if s.bars.mode == crate::scrollbar::Mode::Never { Vec2::ZERO } else { Vec2::splat(16.0) };
                 let rect = Rect::from_min_size(ui.max_rect().min, size - inset);
@@ -808,7 +808,7 @@ fn the_kinds_of_file_are_drawn() {
                 |ui, s: &mut Pic| {
                     ui.ctx().set_theme(if s.chrome.bg.r() < 128 { egui::Theme::Dark } else { egui::Theme::Light });
                     let code = |_: bool, _: bool| (FontId::monospace(13.0), false);
-                    let look = Look { chrome: s.chrome, colors: s.colors, ui: FontId::proportional(13.0), code: &code, row_h: 19.0, char_w: 7.8 };
+                    let look = Look { chrome: s.chrome, colors: s.colors, ui: FontId::proportional(13.0), code: &code, row_h: 19.0, char_w: 7.8, bar_h: 31.0 };
                     let rect = Rect::from_min_size(ui.max_rect().min, Vec2::new(640.0, 560.0));
                     s.view.show(ui, rect, &look, true);
                 },

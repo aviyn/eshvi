@@ -323,6 +323,12 @@ impl VimApp {
         (framed && w.col == outer.col && w.col + (w.width as i64) < outer.col + outer.width as i64 - 1) as i64
     }
 
+    /// The height of every strip of tabs or buttons: `[layout] tab_height`,
+    /// else by the UI font (what the diff view's bar was).
+    pub(super) fn tab_height(&self) -> f32 {
+        crate::config::tab_height(self.config.layout.tab_height, self.explorer.font_size)
+    }
+
     /// Screen rect of a window's place in the layout.
     pub(super) fn window_rect(&self, w: &grid::Window) -> Rect {
         let m = self.renderer.metrics();
@@ -334,12 +340,17 @@ impl VimApp {
     /// a file window below another with the global statusline, which
     /// `apply_layout` (setup.lua) gives no winbar.
     pub(super) fn tab_in_separator(&self, w: &grid::Window) -> bool {
-        self.laststatus == 3
-            && w.margins.top == 0
-            && w.row > 0
-            && w.kind == WindowKind::Normal
+        self.config.layout.winbar == crate::config::WinbarMode::Tab
+            && self.separator_above(w)
             && self.win_paths.contains_key(&w.win)
             && !self.sidebar_wins.contains(&w.win)
+    }
+
+    /// Whether a window has Neovim's separator row right above it (its line
+    /// through the row's middle): one below another with the global
+    /// statusline, and no winbar of its own.
+    pub(super) fn separator_above(&self, w: &grid::Window) -> bool {
+        self.laststatus == 3 && w.margins.top == 0 && w.row > 0 && w.kind == WindowKind::Normal
     }
 
     /// How far past its last column a window at the editor's right edge

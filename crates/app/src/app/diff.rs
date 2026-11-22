@@ -282,7 +282,7 @@ impl VimApp {
         ui_font.size = self.explorer.font_size;
         let fonts = &self.grid_fonts;
         let code = |bold: bool, italic: bool| fonts.font_id(bold, italic);
-        let look = Look { chrome, colors: DiffColors::from_editor(&self.editor), ui: ui_font, code: &code, row_h: m.height, char_w: m.width };
+        let look = Look { chrome, colors: DiffColors::from_editor(&self.editor), ui: ui_font, code: &code, row_h: m.height, char_w: m.width, bar_h: self.tab_height() };
         view.bar_drag = self.scrollbars.dragging();
         let actions = view.show(ui, area, &look, self.focus == Focus::Diff);
         self.diff = Some(view);

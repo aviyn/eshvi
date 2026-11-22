@@ -486,10 +486,10 @@ impl VimApp {
                 }
                 Event::PointerButton { pos, pressed: false, .. }
                     if self.winbar_tabs.iter().any(|&(_, close, _, _)| close.contains(pos)) => {}
-                // A tab in a separator row focuses its window (elsewhere in
-                // that row, a press is Neovim's: dragging resizes).
+                // A tab in a separator row, or a pill, focuses its window
+                // (elsewhere in that row, a press is Neovim's: dragging resizes).
                 Event::PointerButton { pos, pressed, button: PointerButton::Primary, .. }
-                    if self.winbar_tabs.iter().any(|&(tab, _, _, above)| above && tab.contains(pos)) =>
+                    if self.winbar_tabs.iter().any(|&(tab, _, _, own)| own && tab.contains(pos)) =>
                 {
                     if pressed {
                         flush_keys(&mut keys, &self.bridge);

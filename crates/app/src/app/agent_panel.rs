@@ -567,7 +567,7 @@ impl VimApp {
         }
         let ctx = ui.ctx().clone();
         let chrome = Chrome::from_editor(&self.editor);
-        let row = self.renderer.metrics().height;
+        let row = self.tab_height();
         let fonts = self.grid_fonts.agent.as_deref().unwrap_or_else(|| self.grid_fonts.terminal());
         let agent_cell = crate::renderer::EguiGridRenderer::measure(&ctx, fonts, self.linespace).width;
         let available = ui.available_width();

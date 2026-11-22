@@ -34,6 +34,7 @@ mod chrome;
 mod diff;
 mod events;
 mod file_drop;
+mod file_pill;
 mod layout;
 mod markdown_preview;
 mod outline;
@@ -216,10 +217,10 @@ pub struct VimApp {
     /// A progress bar from OSC 9;4 (|Progress| events): `Some(None)` has
     /// no known amount.
     tty_progress: Option<Option<u8>>,
-    /// Window file tabs (winbar) from the last frame: the tab, its "×", and
+    /// Window file tabs and pills from the last frame: the tab, its "×", and
     /// the window.
-    /// Whether it's in the separator row above the window (see
-    /// `tab_in_separator`), where a press on the tab focuses the window.
+    /// Whether a press on it is ours, to focus the window: a tab in the
+    /// separator row above the window (see `tab_in_separator`), or a pill.
     winbar_tabs: Vec<(Rect, Rect, i64, bool)>,
     /// Buttons at the right of a window's file-tab row (a Markdown file's
     /// previews), by window.
@@ -451,7 +452,8 @@ impl VimApp {
             restore_notify: config.messages.restore_notify,
             // The native bar is one bar: a global statusline whatever the layout says.
             global_statusline: config.layout.global_statusline || (native_completion && config.statusline.gui),
-            winbar: config.layout.winbar,
+            // (Neovim's winbar only for the old file tab; a pill is the GUI's.)
+            winbar: config.layout.winbar == crate::config::WinbarMode::Tab,
             terminal_enabled: config.terminal.enabled,
             menu: menu_enabled,
             agent: config.agent.enabled.then(|| nvim_bridge::AgentOptions {
@@ -1215,12 +1217,13 @@ impl VimApp {
             // under the floats drawn after it.
             if let Some(r) = self.editor.windows.get(&grid).and_then(|w| self.preview_rect(w)) {
                 self.show_preview(ui, &painter, grid, r);
-                continue;
-            }
-            if grid == self.editor.cursor.grid && show_cursor {
+            } else if grid == self.editor.cursor.grid && show_cursor {
                 let editor_focus = self.focused && self.focus == Focus::Editor;
                 self.renderer.paint_cursor(&layer, &self.editor, origin, editor_focus);
             }
+            // A window's file pill, over its text and cursor (and the
+            // preview), under the floats drawn after it.
+            self.paint_file_pill(&ctx, &painter, grid);
         }
 
         match panel_rect {

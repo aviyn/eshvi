@@ -634,7 +634,7 @@ fn side_harness(name: &str, width: f32, height: f32, tree: TreeView, views: Vec<
                     _ => None,
                 };
                 let reserved = 18.0 + row_h / 2.0 + 4.0 + row_h * info.as_ref().map_or(0, |i| i.header_buttons()) as f32;
-                let (header, picked) = crate::side_bar::header(ui, s.side, 0, reserved, row_h, &font, &colors, &s.views, &mut s.icons);
+                let (header, picked) = crate::side_bar::header(ui, s.side, 0, reserved, row_h, row_h * 1.2, &font, &colors, &s.views, &mut s.icons);
                 s.picked.extend(picked);
                 if let Some(info) = info {
                     let look = Look { colors: &colors, font, font_size: 13.0, row_h };

@@ -134,7 +134,7 @@ fn harness(name: &str, width: f32, height: f32, view: ScmView, side: SideView) -
                 let row_h = side_bar::row_height(s.view.font_size);
                 let count = s.view.change_count();
                 let reserved = ScmView::header_reserved(row_h);
-                let (header, _) = side_bar::header(ui, s.side, count, reserved, row_h, &font, &colors, &[], &mut crate::icons::IconTextures::default());
+                let (header, _) = side_bar::header(ui, s.side, count, reserved, row_h, row_h * 1.2, &font, &colors, &[], &mut crate::icons::IconTextures::default());
                 if s.side == SideView::Explorer {
                     return;
                 }

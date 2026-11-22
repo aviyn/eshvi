@@ -92,7 +92,10 @@
 //!
 //! [layout]                      # applied inside eshvi only
 //! global_statusline = true      # 'laststatus' 3: one status bar, thin window separators
-//! winbar = true                 # filename header on each window
+//! winbar = "pill"               # a window's file name: "pill" (over the text, top right), "pill_left",
+//!                               # "tab" (a row of its own) or "none"; true is "pill", false "none"
+//! pill_height = 20              # the file pill's height; default: 0.9 of an editor row (never more than a row)
+//! tab_height = 31               # the height of every strip of tabs or buttons; default: 2.4 x the UI font size
 //! native_tabs = true            # tab pages as GUI tabs (replaces 'tabline' plugins)
 //!
 //! [statusline]
@@ -485,18 +488,78 @@ pub enum ListFont {
     Editor,
 }
 
+/// How a window shows its file's name (`[layout] winbar`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum WinbarMode {
+    /// A small pill over the text, at the window's top right.
+    #[default]
+    Pill,
+    /// The same at its top left.
+    PillLeft,
+    /// A tab in a row of its own: Neovim's winbar.
+    Tab,
+    None,
+}
+
+impl WinbarMode {
+    /// Drawn over the text by the GUI (Neovim has no winbar).
+    pub fn is_pill(self) -> bool {
+        matches!(self, Self::Pill | Self::PillLeft)
+    }
+}
+
+/// A string, or a bool as older configs have it.
+impl<'de> Deserialize<'de> for WinbarMode {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Raw {
+            Flag(bool),
+            Name(String),
+        }
+        match Raw::deserialize(d)? {
+            Raw::Flag(true) => Ok(Self::Pill),
+            Raw::Flag(false) => Ok(Self::None),
+            Raw::Name(n) => match n.as_str() {
+                "pill" => Ok(Self::Pill),
+                "pill_left" => Ok(Self::PillLeft),
+                "tab" => Ok(Self::Tab),
+                "none" => Ok(Self::None),
+                other => Err(serde::de::Error::custom(format!(
+                    "unknown winbar \"{other}\", expected \"pill\", \"pill_left\", \"tab\" or \"none\""
+                ))),
+            },
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct LayoutConfig {
     pub global_statusline: bool,
-    pub winbar: bool,
+    pub winbar: WinbarMode,
+    /// Points; none: 2.4 x the UI font size (`VimApp::tab_height`).
+    pub tab_height: Option<f32>,
+    /// Points (12 to 48); none: 0.9 of an editor row.
+    pub pill_height: Option<f32>,
     pub native_tabs: bool,
 }
 
 impl Default for LayoutConfig {
     fn default() -> Self {
-        Self { global_statusline: true, winbar: true, native_tabs: true }
+        Self { global_statusline: true, winbar: WinbarMode::Pill, tab_height: None, pill_height: None, native_tabs: true }
     }
+}
+
+/// The file pill's height: `[layout] pill_height` (12 to 48, may pass a row), else 0.9 of an editor row.
+pub fn pill_height(configured: Option<f32>, row_h: f32) -> f32 {
+    configured.map_or_else(|| (row_h * 0.9).round(), |h| h.clamp(12.0, 48.0).round())
+}
+
+/// The height of every strip: `[layout] tab_height` (16 to 64), else 2.4
+/// times the UI font size.
+pub fn tab_height(configured: Option<f32>, ui_size: f32) -> f32 {
+    configured.map_or_else(|| (ui_size * 2.4).round(), |h| h.clamp(16.0, 64.0).round())
 }
 
 #[derive(Debug, Deserialize)]
@@ -736,7 +799,14 @@ pub fn restart_needed(old: &Config, new: &Config) -> Vec<&'static str> {
         ),
         ("[session] auto", o.session.auto != n.session.auto),
         ("[menu]", differ(&o.menu, &n.menu)),
-        ("[layout]", differ(&o.layout, &n.layout)),
+        // (Not `tab_height`: read as it's drawn.)
+        (
+            "[layout]",
+            differ(
+                &(o.layout.global_statusline, o.layout.winbar, o.layout.native_tabs),
+                &(n.layout.global_statusline, n.layout.winbar, n.layout.native_tabs),
+            ),
+        ),
         ("[messages]", differ(&o.messages, &n.messages)),
     ]
     .into_iter()
@@ -866,7 +936,24 @@ mod tests {
         assert_eq!(c.popup.hover_max_height, 420.0);
         assert!(c.sidebar.enabled);
         assert_eq!(c.statusline.resolve_colors(), StatusColorMode::Panel);
-        assert!(c.layout.global_statusline && c.layout.winbar);
+        assert!(c.layout.global_statusline);
+        // A window's file name: a pill unless said; true and false are the old forms.
+        let winbar = |v: &str| parse(&format!("[layout]\nwinbar = {v}")).map(|c| c.layout.winbar);
+        assert_eq!(c.layout.winbar, WinbarMode::Pill);
+        assert_eq!(winbar("\"pill_left\"").unwrap(), WinbarMode::PillLeft);
+        assert_eq!(winbar("\"tab\"").unwrap(), WinbarMode::Tab);
+        assert_eq!(winbar("\"none\"").unwrap(), WinbarMode::None);
+        assert_eq!((winbar("true").unwrap(), winbar("false").unwrap()), (WinbarMode::Pill, WinbarMode::None));
+        assert!(winbar("\"bar\"").is_err() && winbar("3").is_err());
+        // One strip height: the default follows the UI font, a setting is kept within reason.
+        assert_eq!(c.layout.tab_height, None);
+        assert_eq!(tab_height(None, 13.0), 31.0);
+        assert_eq!(tab_height(Some(24.0), 13.0), 24.0);
+        assert_eq!((tab_height(Some(4.0), 13.0), tab_height(Some(400.0), 13.0)), (16.0, 64.0));
+        assert_eq!((c.layout.pill_height, pill_height(None, 21.0)), (None, 19.0));
+        assert_eq!((pill_height(Some(28.0), 21.0), pill_height(Some(2.0), 21.0), pill_height(Some(90.0), 21.0)), (28.0, 12.0, 48.0));
+        assert_eq!(parse("[layout]\npill_height = 28").unwrap().layout.pill_height, Some(28.0));
+        assert_eq!(parse("[layout]\ntab_height = 40").unwrap().layout.tab_height, Some(40.0));
         let colors = |v: &str| parse(&format!("[statusline]\ncolors = \"{v}\"")).unwrap().statusline.resolve_colors();
         assert_eq!(colors("theme"), StatusColorMode::Theme);
         let StatusColorMode::Fixed(f) = colors("fixed") else { panic!() };
@@ -939,6 +1026,9 @@ mod tests {
         assert!(restart_needed(&old, &new).is_empty());
         let new = parse("[agent]\ncommand = [\"codex\"]\n[layout]\nwinbar = false").unwrap();
         assert_eq!(restart_needed(&old, &new), ["[agent] enabled, command, commands", "[layout]"]);
+        // The strips' height is read as drawn.
+        let new = parse("[layout]\ntab_height = 40").unwrap();
+        assert!(restart_needed(&old, &new).is_empty());
         // The panels' sizes apply at once; `native` is gone and ignored.
         let new = parse("[agent]\nwidth = 90\n[terminal]\nheight = 20\nnative = true").unwrap();
         assert!(restart_needed(&old, &new).is_empty());

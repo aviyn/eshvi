@@ -73,7 +73,12 @@ restore_notify = true         # the built-in vim.notify (toasts) even if a plugi
 
 [layout]                      # applied inside Eshvi only (restart)
 global_statusline = true      # 'laststatus' 3: one status bar, thin window separators
-winbar = true                 # a file name header on each window
+winbar = "pill"               # a window's file name: "pill" (over the text, top right), "pill_left",
+                              # "tab" (a row of its own) or "none"; true is "pill", false is "none"
+# pill_height = 20             # not a restart: the file pill's height (12 to 48, may be taller than a row);
+                              # default: 0.9 of an editor row
+# tab_height = 31               # not a restart: the height of every strip of tabs or buttons (agent panel,
+                              # bottom panel, tab line, diff view, side bar); default: 2.4 x the UI font size
 native_tabs = true            # tab pages as title bar tabs (replaces 'tabline' plugins)
 
 [statusline]

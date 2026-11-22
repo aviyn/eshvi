@@ -85,6 +85,8 @@ pub struct Look<'a> {
     /// A cell's size.
     pub row_h: f32,
     pub char_w: f32,
+    /// The height of the bar and the find bar: every strip's (`[layout] tab_height`).
+    pub bar_h: f32,
 }
 
 /// What was under a press.
@@ -154,7 +156,7 @@ impl DiffView {
         p.rect_filled(rect, 0.0, look.chrome.bg);
         let header_h = (look.ui.size * 2.0).round();
         self.geom = Geometry { row_h: look.row_h, header_h, gap: (look.row_h * 0.6).round(), char_w: look.char_w };
-        let bar_h = (look.ui.size * 2.4).round();
+        let bar_h = look.bar_h;
         let bar = Rect::from_min_size(rect.min, Vec2::new(rect.width(), bar_h));
         // The find field's strip under the bar, while it is open.
         let find_h = if self.find.is_some() { bar_h } else { 0.0 };

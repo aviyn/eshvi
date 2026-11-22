@@ -1867,7 +1867,7 @@ mod tests {
                     egui::CentralPanel::default().frame(egui::Frame::new().fill(colors.bg)).show(ui, |ui| {
                         let row_h = crate::side_bar::row_height(13.0);
                         let font = fonts.sidebar_font_id(false);
-                        let (header, _) = crate::side_bar::header(ui, crate::side_bar::SideView::Explorer, 0, ExplorerView::header_reserved(row_h), row_h, &font, &colors, &[], &mut crate::icons::IconTextures::default());
+                        let (header, _) = crate::side_bar::header(ui, crate::side_bar::SideView::Explorer, 0, ExplorerView::header_reserved(row_h), row_h, row_h * 1.2, &font, &colors, &[], &mut crate::icons::IconTextures::default());
                         let actions = s.view.show(ui, header, &colors, &s.theme, &fonts, &Decorations::default(), &deco_colors);
                         s.actions.extend(actions);
                     });
