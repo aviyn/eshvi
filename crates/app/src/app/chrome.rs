@@ -301,7 +301,10 @@ impl VimApp {
                     let end = rect.max.x - 8.0 - toggles.len() as f32 * (size.x + 2.0) - 12.0;
                     let room = (middle - rect.min.y).min(rect.max.y - middle) * 2.0;
                     let area = Rect::from_min_max(Pos2::new(rect.min.x + 78.0, middle - room / 2.0), Pos2::new(end, middle + room / 2.0));
-                    let (command, pill_icons) = title_tabs(ui, area, rect.center().x, &pills, wide, font.clone(), &chrome);
+                    // From the editor's left edge, as the text below them (last frame's;
+                    // none yet: from the traffic lights).
+                    let start = if self.grid_area.min.x.is_finite() { self.grid_area.min.x } else { area.min.x };
+                    let (command, pill_icons) = title_tabs(ui, area, start, &pills, wide, font.clone(), &chrome);
                     tab_command = command;
                     icons = pill_icons;
                 }
@@ -341,6 +344,9 @@ impl VimApp {
     }
 }
 
+/// The least room the title bar's pills keep, however far right the editor starts.
+const MIN_ROOM: f32 = 240.0;
+
 /// A pill in the title bar: a tab page, or (`tab` none) the window's
 /// title while there is one.
 pub(super) struct TitlePill {
@@ -354,8 +360,8 @@ pub(super) struct TitlePill {
 /// The title bar's pills in `area`: each a shade lighter than the bar, the
 /// current one more, with its icon in color (the others' are dimmed like
 /// their names); "×" on the current one and on hover (not on a lone
-/// title); "+" after them. Centered on `center_x` (the window's middle) as
-/// far as `area` allows. `wide`: equal pills sharing the room (up to a
+/// title); "+" after them. From `start_x` (the editor's left edge) as far
+/// as `area` allows. `wide`: equal pills sharing the room (up to a
 /// width), their icon and name centered while there's room; else as wide as
 /// their names. A lone title pill is wide either way. Returns the
 /// command a click asked for and where the icons go (painted by the caller,
@@ -363,13 +369,15 @@ pub(super) struct TitlePill {
 fn title_tabs(
     ui: &mut egui::Ui,
     area: Rect,
-    center_x: f32,
+    start_x: f32,
     pills: &[TitlePill],
     wide: bool,
     font: egui::FontId,
     chrome: &Chrome,
 ) -> (Option<String>, Vec<(Rect, std::path::PathBuf, Option<egui::Color32>)>) {
     let panel = chrome.panel;
+    // The pills' room starts at `start_x` (never so late there's no room).
+    let area = Rect::from_min_max(Pos2::new(start_x.min(area.max.x - MIN_ROOM).max(area.min.x), area.min.y), area.max);
     let painter = ui.painter().with_clip_rect(area);
     let pill_h = (area.height() - 6.0).max(14.0).round();
     let (pad, icon, close_w, gap) = (style::TAB_PAD, super::tabs::file_icon_size(&font), style::button_size(pill_h), 4.0);
@@ -401,8 +409,7 @@ fn title_tabs(
             (galley, color, w)
         })
         .collect();
-    let total = laid.iter().map(|(_, _, w)| w).sum::<f32>() + (n - 1.0) * gap;
-    let mut x = (center_x - total / 2.0).clamp(area.min.x, (area.min.x + room - total).max(area.min.x));
+    let mut x = area.min.x;
     let mut command = None;
     let mut icons = Vec::new();
     for (i, (p, (galley, color, w))) in pills.iter().zip(laid).enumerate() {
@@ -575,7 +582,8 @@ mod tests {
                 let rect = ui.max_rect();
                 ui.painter().rect_filled(rect, 0.0, chrome.panel);
                 let area = Rect::from_min_max(Pos2::new(rect.min.x + 78.0, rect.min.y), Pos2::new(rect.max.x - 80.0, rect.max.y));
-                title_tabs(ui, area, rect.center().x, &pills, wide, egui::FontId::proportional(13.0), &chrome);
+                // (From where an editor beside a side bar would start.)
+                title_tabs(ui, area, rect.min.x + 160.0, &pills, wide, egui::FontId::proportional(13.0), &chrome);
             });
             if let Some(pos) = hover {
                 harness.hover_at(pos);
