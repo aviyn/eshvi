@@ -44,6 +44,10 @@ optional coding agent panel.
 
 ![Source Control, a Rust file, and two terminals in the bottom panel](docs/screenshots/terminal.png)
 
+![The diff view opened from Source Control, showing the changes in three files](docs/screenshots/diff.png)
+
+![Two Rust files in a horizontal split, each with its file name in a pill](docs/screenshots/splits.png)
+
 ![Completion in a Rust file, with rust-analyzer's documentation beside the menu](docs/screenshots/completion.png)
 
 ## Install
