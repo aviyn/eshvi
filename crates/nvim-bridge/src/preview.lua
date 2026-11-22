@@ -166,16 +166,25 @@ local function side()
   vim.bo[buf].bufhidden = 'wipe'
   vim.bo[buf].swapfile = false
   vim.bo[buf].modifiable = false
+  vim.bo[buf].buflisted = false
   vim.bo[buf].filetype = 'eshvi_preview'
+  -- Named, so :edit here opens a buffer of its own (an empty unnamed buffer
+  -- would be reused for the file, keeping the options below).
+  pcall(vim.api.nvim_buf_set_name, buf, 'eshvi://preview/' .. buf)
   vim.w[win].eshvi_preview_of = src
+  -- Local to the scratch buffer in this window (:setlocal): a file opened in
+  -- the window gets the window's own (those of the one it was split from).
+  local function set(opt, value)
+    vim.api.nvim_set_option_value(opt, value, { scope = 'local', win = win })
+  end
   if tab_winbar then
-    vim.wo[win].winbar = 'Preview ' .. vim.fn.fnamemodify(vim.api.nvim_buf_get_name(src), ':t')
+    set('winbar', 'Preview ' .. vim.fn.fnamemodify(vim.api.nvim_buf_get_name(src), ':t'))
   end
   for _, opt in ipairs({ 'number', 'relativenumber', 'cursorline', 'list', 'spell' }) do
-    vim.wo[win][opt] = false
+    set(opt, false)
   end
-  vim.wo[win].signcolumn = 'no'
-  vim.wo[win].foldcolumn = '0'
+  set('signcolumn', 'no')
+  set('foldcolumn', '0')
   vim.api.nvim_set_current_win(from)
   report()
 end
@@ -238,8 +247,14 @@ vim.api.nvim_create_autocmd('BufWinEnter', {
   group = group,
   callback = function()
     local win = vim.api.nvim_get_current_win()
-    if vim.w[win].eshvi_preview and not is_markdown(vim.api.nvim_win_get_buf(win)) then
+    local buf = vim.api.nvim_win_get_buf(win)
+    if vim.w[win].eshvi_preview and not is_markdown(buf) then
       in_place(win, false)
+    end
+    -- Another buffer in a side preview's window: no longer a preview.
+    if vim.w[win].eshvi_preview_of and vim.bo[buf].filetype ~= 'eshvi_preview' then
+      vim.w[win].eshvi_preview_of = nil
+      report()
     end
   end,
 })

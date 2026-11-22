@@ -5971,6 +5971,36 @@ fn a_preview_beside_stands_for_its_file_and_choosing_a_heading_moves_the_files_w
 }
 
 #[test]
+fn a_file_opened_in_a_side_previews_window_gets_the_windows_own_options() {
+    if !nvim_available() {
+        return;
+    }
+    let dir = picker_dir("side-then-file");
+    let (md, lua) = (dir.join("n.md"), dir.join("a.lua"));
+    std::fs::write(&md, OUTLINE_MD).unwrap();
+    std::fs::write(&lua, "local x = 1\n").unwrap();
+    let (bridge, mut ed) = picker_session(false, &["--cmd", &format!("cd {}", dir.display()), "--cmd", "set number", md.to_str().unwrap()]);
+    bridge.send(UiCommand::Command("EshviPreview side".into()));
+    wait_for(&bridge, &mut ed, "#vim.api.nvim_list_wins()", "2");
+    bridge.send(UiCommand::Command(
+        "lua for _, w in ipairs(vim.api.nvim_list_wins()) do if vim.w[w].eshvi_preview_of then vim.api.nvim_set_current_win(w) end end".into(),
+    ));
+    wait_for(&bridge, &mut ed, "vim.bo.filetype", "eshvi_preview");
+    assert_eq!(ask(&bridge, &mut ed, "tostring(vim.wo.number)"), "false", "the preview has no numbers");
+    let scratch = ask(&bridge, &mut ed, "vim.api.nvim_get_current_buf()");
+    bridge.send(UiCommand::Command(format!("edit {}", lua.display())));
+    wait_for(&bridge, &mut ed, "vim.bo.filetype", "lua");
+    // A buffer of its own (the preview's is gone), with the window's numbers.
+    assert_eq!(ask(&bridge, &mut ed, &format!("vim.api.nvim_buf_is_valid({scratch})")), "false");
+    assert_eq!(ask(&bridge, &mut ed, "tostring(vim.wo.number)"), "true");
+    assert_eq!(ask(&bridge, &mut ed, "vim.wo.signcolumn"), "auto");
+    assert_eq!(ask(&bridge, &mut ed, "vim.bo.buftype .. '|' .. tostring(vim.bo.buflisted)"), "|true");
+    assert_eq!(ask(&bridge, &mut ed, "tostring(vim.w.eshvi_preview_of)"), "nil", "no longer a preview");
+    bridge.send(UiCommand::Command("qa!".into()));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
 fn choosing_a_heading_scrolls_an_in_place_preview_and_leaves_it_shown_and_out_of_insert_mode() {
     if !nvim_available() {
         return;
