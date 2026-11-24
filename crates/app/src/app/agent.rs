@@ -75,7 +75,7 @@ pub(super) fn paint_strip(painter: &egui::Painter, strip: Rect, model: &Strip, c
     painter.hline(strip.x_range(), strip.max.y - 0.5, egui::Stroke::new(style::HAIRLINE, chrome.line()));
 
     let hover = ctx.input(|i| i.pointer.hover_pos()).filter(|p| strip.contains(*p));
-    let (pad, icon_w, dot_w) = (style::TAB_PAD, (font.size * 0.8).round(), style::button_size(strip.height()));
+    let (icon_w, dot_w) = ((font.size * 0.8).round(), style::button_size(strip.height()));
     let close = Rect::from_min_max(Pos2::new(strip.max.x - 4.0 - strip.height(), strip.min.y), Pos2::new(strip.max.x - 4.0, strip.max.y));
     // What the agents changed, left of "×": "+8 −3" (a dot when that
     // changed unseen); opens the Changes popup. Nothing changed: none.
@@ -94,57 +94,42 @@ pub(super) fn paint_strip(painter: &egui::Painter, strip: Rect, model: &Strip, c
     // share are cut with "…".
     let buttons = if model.resume { 2.0 } else { 1.0 };
     let tabs_end = chip.as_ref().map_or(close.min.x, |c| c.0.min.x) - 4.0 - buttons * (strip.height() + 2.0);
-    let fixed = (pad + icon_w + style::GAP + 4.0 + dot_w + pad * 0.5).round();
+    let fixed = super::tabs::tab_width(icon_w, 0.0, dot_w);
     let share = (tabs_end - strip.min.x) / model.tabs.len().max(1) as f32;
     let title_max = (share - fixed).max(font.size * 1.5);
     let time = ctx.input(|i| i.time);
     let mut x = strip.min.x;
+    let look = super::tabs::TabLook { chrome, content_bg, focused, height: strip.height() };
     for tab in model.tabs {
         let mut color = chrome.text(tab.current && focused);
         if tab.exited {
             color = chrome.dim(color);
         }
-        let mut title = painter.layout_no_wrap(tab.title.clone(), font.clone(), color);
-        let mut keep = tab.title.chars().count();
-        while title.size().x > title_max && keep > 1 {
-            keep -= 1;
-            title = painter.layout_no_wrap(truncate_chars(&tab.title, keep), font.clone(), color);
-        }
-        let rect = Rect::from_min_size(
-            Pos2::new(x, strip.min.y),
-            Vec2::new((pad + icon_w + style::GAP + title.size().x + 4.0 + dot_w + pad * 0.5).round(), strip.height()),
-        );
+        let title = super::tabs::cut_title(&painter, &tab.title, font, color, title_max);
+        let rect = Rect::from_min_size(Pos2::new(x, strip.min.y), Vec2::new(super::tabs::tab_width(icon_w, title.size().x, dot_w), strip.height()));
         x = rect.max.x;
-        // Like the editor's file tabs: the current one in the panel's
-        // color, joined to it, with an accent on top while focused.
-        if tab.current {
-            style::paint_current_tab(&painter, rect, focused, chrome, content_bg);
-        }
-        style::paint_tab_divider(&painter, rect, chrome);
-        // An asterisk, the agent's mark.
-        let c = Pos2::new(rect.min.x + pad + icon_w * 0.4, rect.center().y);
-        let r = icon_w * 0.32;
-        let icon_color = if tab.current && !tab.exited { mix(accent, fg, style::TINT) } else { color };
-        for k in 0..3 {
-            let a = std::f32::consts::PI * (k as f32 / 3.0 + 0.5);
-            let d = Vec2::new(a.cos(), a.sin()) * r;
-            painter.line_segment([c - d, c + d], egui::Stroke::new(style::STROKE, icon_color));
-        }
-        let text_x = rect.min.x + pad + icon_w + style::GAP;
-        painter.galley(Pos2::new(text_x, rect.center().y - title.size().y / 2.0), title.clone(), color);
-        // Status, or "×" while hovered.
-        let slot = Rect::from_center_size(Pos2::new(text_x + title.size().x + 4.0 + dot_w / 2.0, rect.center().y), Vec2::splat(dot_w));
-        if hover.is_some_and(|p| rect.contains(p)) {
-            let on = hover.is_some_and(|p| slot.contains(p));
-            let surface = style::tab_fill(chrome, content_bg, tab.current, focused);
-            style::glyph_button(&painter, Glyph::Cross, slot.center(), strip.height(), chrome, surface, on);
-            out.buttons.push((slot, AgentButton::CloseTab(tab.id)));
-        } else if tab.active {
-            let pulse = 0.55 + 0.45 * (time as f32 * 4.0).sin();
-            painter.circle_filled(slot.center(), 3.0, accent.gamma_multiply(pulse));
+        // Status in the "×" slot: a pulsing dot while it works, a solid one when it went quiet unseen.
+        let dot = if tab.active {
             out.animating = true;
-        } else if tab.unseen {
-            painter.circle_filled(slot.center(), 3.0, accent);
+            Some(accent.gamma_multiply(0.55 + 0.45 * (time as f32 * 4.0).sin()))
+        } else {
+            tab.unseen.then_some(accent)
+        };
+        // Like the editor's file tabs: the current one in the panel's color, joined to it,
+        // with an accent on top while focused (`paint_tab`).
+        let hit = super::tabs::paint_tab(&painter, &look, rect, tab.current, title, color, icon_w, hover, dot, &mut |p, icon, color| {
+            // An asterisk, the agent's mark.
+            let c = Pos2::new(icon.min.x + icon_w * 0.4, icon.center().y);
+            let r = icon_w * 0.32;
+            let icon_color = if tab.current && !tab.exited { mix(accent, fg, style::TINT) } else { color };
+            for k in 0..3 {
+                let a = std::f32::consts::PI * (k as f32 / 3.0 + 0.5);
+                let d = Vec2::new(a.cos(), a.sin()) * r;
+                p.line_segment([c - d, c + d], egui::Stroke::new(style::STROKE, icon_color));
+            }
+        });
+        if hit.hovered {
+            out.buttons.push((hit.slot, AgentButton::CloseTab(tab.id)));
         }
         out.buttons.push((rect, AgentButton::Tab(tab.id)));
     }

@@ -216,8 +216,8 @@ impl VimApp {
         }
     }
 
-    /// Tab pages go in the title bar (as pills) while it is shown; else
-    /// in their own strip below it (when there are two or more).
+    /// The title bar is shown (not full screen): with `tabs = "wide"` or `"compact"` it
+    /// holds the tab pages as pills, else they have their strip.
     pub(super) fn tabs_in_titlebar(&self, ctx: &egui::Context) -> bool {
         self.titlebar.is_some() && !ctx.input(|i| i.viewport().fullscreen).unwrap_or(false)
     }
@@ -234,8 +234,10 @@ impl VimApp {
             f.size = (height * 0.5).clamp(10.0, 14.0);
             f
         };
-        // Pills: the tab pages, or with one, the window's title.
-        let pills: Vec<TitlePill> = if self.editor.tabs.len() >= 2 {
+        // Pills: the tab pages (not with the strip), or with one, the window's title (with
+        // the strip: plain text, no pill or "+").
+        let strip = self.config.window.tabs == crate::config::TitleTabs::Strip;
+        let pills: Vec<TitlePill> = if self.editor.tabs.len() >= 2 && !strip {
             self.editor
                 .tabs
                 .iter()
@@ -304,9 +306,14 @@ impl VimApp {
                     // From the editor's left edge, as the text below them (last frame's;
                     // none yet: from the traffic lights).
                     let start = if self.grid_area.min.x.is_finite() { self.grid_area.min.x } else { area.min.x };
-                    let (command, pill_icons) = title_tabs(ui, area, start, &pills, wide, font.clone(), &chrome);
-                    tab_command = command;
-                    icons = pill_icons;
+                    if strip {
+                        // The tab pages are in their strip: the title as plain text.
+                        title_text(ui.painter(), rect.center().x, area, &pills[0].label, &font, chrome.text(false));
+                    } else {
+                        let (command, pill_icons) = title_tabs(ui, area, start, &pills, wide, font.clone(), &chrome);
+                        tab_command = command;
+                        icons = pill_icons;
+                    }
                 }
                 let mut x = rect.max.x - 8.0;
                 for &(toggle, on) in toggles.iter().rev() {
@@ -342,6 +349,17 @@ impl VimApp {
             self.bridge.send(UiCommand::Command(c));
         }
     }
+}
+
+/// The window's title as plain text on the bar: centered on `center_x` (the window's
+/// middle) where it fits in `area`, else moved into it, and cut with "…" when even
+/// `area` is too narrow.
+fn title_text(painter: &egui::Painter, center_x: f32, area: Rect, title: &str, font: &egui::FontId, color: egui::Color32) {
+    let galley = super::tabs::cut_title(painter, title, font, color, area.width().max(0.0));
+    let w = galley.size().x;
+    let left = (center_x - w / 2.0).min(area.max.x - w).max(area.min.x);
+    let y = area.center().y - galley.size().y / 2.0;
+    painter.with_clip_rect(area).galley(Pos2::new(left, y), galley, color);
 }
 
 /// The least room the title bar's pills keep, however far right the editor starts.
@@ -590,6 +608,27 @@ mod tests {
             }
             harness.run();
             harness.snapshot(format!("title_pills_{name}"));
+            results.extend_harness(&mut harness);
+        }
+        results.unwrap();
+    }
+
+    /// With the tab pages in their strip, the title bar's title is plain text: on the
+    /// window's middle while it fits, moved clear of the traffic lights when not, cut
+    /// with "…" when the bar is too narrow.
+    #[test]
+    fn title_text() {
+        let chrome = Chrome::new(egui::Color32::from_rgb(0x28, 0x2c, 0x34), egui::Color32::from_rgb(0xab, 0xb2, 0xbf), egui::Color32::from_rgb(0x4f, 0xa6, 0xed));
+        let mut results = egui_kittest::SnapshotResults::new();
+        for (name, width, title) in [("centered", 600.0, "main.rs — eshvi"), ("moved", 300.0, "a_long_file_name.rs — eshvi"), ("cut", 220.0, "a_long_file_name.rs — eshvi")] {
+            let mut harness = Harness::builder().with_size(Vec2::new(width, 32.0)).with_pixels_per_point(2.0).with_render_cursor(false).wgpu().build_ui(move |ui| {
+                let rect = ui.max_rect();
+                ui.painter().rect_filled(rect, 0.0, chrome.panel);
+                let area = Rect::from_min_max(Pos2::new(rect.min.x + 78.0, rect.min.y), Pos2::new(rect.max.x - 40.0, rect.max.y));
+                super::title_text(ui.painter(), rect.center().x, area, title, &egui::FontId::proportional(13.0), chrome.text(false));
+            });
+            harness.run();
+            harness.snapshot(format!("title_text_{name}"));
             results.extend_harness(&mut harness);
         }
         results.unwrap();

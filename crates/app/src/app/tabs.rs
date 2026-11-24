@@ -212,12 +212,25 @@ impl VimApp {
         }
     }
 
-    /// Neovim's tab pages as GUI tabs above the editor (`ext_tabline`),
-    /// while there are two or more: the current window's file in each, the
-    /// current one underlined, "×" on hover (or a middle click) closes one,
-    /// "+" opens a new one.
+    /// Whether the tab pages' strip is shown over the editor: Neovim's `'showtabline'` says
+    /// (0 never, 1 with two or more tab pages, 2 always), and with the pills in the title
+    /// bar only while it's hidden or the window is full screen.
+    pub(super) fn tab_strip_shown(&self, ctx: &egui::Context) -> bool {
+        let showtabline = match self.editor.options.get("showtabline") {
+            Some(grid::OptionValue::Int(n)) => *n,
+            _ => 1,
+        };
+        let strip = self.config.window.tabs == crate::config::TitleTabs::Strip;
+        strip_shown(showtabline, self.editor.tabs.len(), strip || !self.tabs_in_titlebar(ctx))
+    }
+
+    /// Neovim's tab pages as GUI tabs at the top of the editor column (`ext_tabline`), as
+    /// the agent panel's strip draws its tabs (`paint_tab`): the current one joined to the
+    /// text below, with the accent while the editor has the keyboard, "×" while hovered
+    /// (a dot while its window has unsaved changes), "+" after them. A middle click
+    /// closes one, a click selects it.
     pub(super) fn show_tabline(&mut self, ui: &mut egui::Ui) {
-        if self.editor.tabs.len() < 2 || self.tabs_in_titlebar(ui.ctx()) {
+        if !self.tab_strip_shown(ui.ctx()) {
             return;
         }
         let chrome = Chrome::from_editor(&self.editor);
@@ -227,11 +240,12 @@ impl VimApp {
             f.size = self.status_font_size + 1.0;
             f
         };
-        // As tall as every strip, and laid out
-        // like it: icon, name, then the close button.
         let height = self.tab_height();
         let tabs = self.editor.tabs.clone();
         let current = self.editor.current_tab;
+        let focused = self.focused && matches!(self.focus, Focus::Editor | Focus::Diff);
+        // Unsaved changes are known for the window with the cursor: the current tab's.
+        let modified = self.editor.windows.get(&self.editor.cursor.grid).is_some_and(|w| self.win_modified.contains(&w.win));
         let mut command = None;
         let mut icons = Vec::new();
         let mut tab_painter = None;
@@ -245,53 +259,35 @@ impl VimApp {
                 let painter = ui.painter_at(strip);
                 tab_painter = Some(painter.clone());
                 painter.hline(strip.x_range(), strip.max.y - 0.5, egui::Stroke::new(style::HAIRLINE, chrome.line()));
+                let hover = ui.ctx().input(|i| i.pointer.hover_pos()).filter(|p| strip.contains(*p));
+                let look = TabLook { chrome: &chrome, content_bg: bg, focused, height };
+                let icon_w = file_icon_size(&font);
+                // The tabs share the strip (less "+"); a title too long for its share ends in "…".
+                let share = (strip.width() - height - 4.0) / tabs.len().max(1) as f32;
+                let title_max = (share - tab_width(icon_w, 0.0, style::button_size(height))).max(font.size * 1.5);
                 let mut x = strip.min.x;
-                let (pad, icon_size) = (style::TAB_PAD, file_icon_size(&font));
                 for (n, (tab, name)) in tabs.iter().enumerate() {
                     let is_current = *tab == current;
-                    let color = chrome.text(is_current);
                     let label = std::path::Path::new(name)
                         .file_name()
                         .map(|n| n.to_string_lossy().into_owned())
                         .filter(|n| !n.is_empty())
                         .unwrap_or_else(|| "[No Name]".into());
-                    let mut job = egui::text::LayoutJob::single_section(label, egui::TextFormat::simple(font.clone(), color));
-                    job.wrap = egui::text::TextWrapping::truncate_at_width(180.0);
-                    let galley = painter.layout_job(job);
-                    let close_w = style::button_size(height);
+                    let color = chrome.text(is_current && focused);
+                    let title = cut_title(&painter, &label, &font, color, title_max);
                     let rect = Rect::from_min_size(
                         Pos2::new(x, strip.min.y),
-                        Vec2::new((pad + icon_size + style::GAP + galley.size().x + 6.0 + close_w + pad * 0.5).round(), strip.height()),
+                        Vec2::new(tab_width(icon_w, title.size().x, style::button_size(height)), strip.height()),
                     );
                     x = rect.max.x;
+                    let dot = (is_current && modified).then_some(color);
+                    let hit = paint_tab(&painter, &look, rect, is_current, title, color, icon_w, hover, dot, &mut |_, icon, _| {
+                        icons.push((icon, std::path::PathBuf::from(name)));
+                    });
                     let resp = ui.interact(rect, egui::Id::unique(("eshvi-tab", n)), egui::Sense::click());
-                    // Like a window's file tab (always focused: it's the
-                    // tab page shown).
-                    let surface = if is_current {
-                        style::paint_current_tab(&painter, rect, true, &chrome, bg);
-                        bg
-                    } else if resp.hovered() {
-                        painter.rect_filled(rect, 0.0, chrome.shade(panel, style::SUBTLE));
-                        chrome.shade(panel, style::SUBTLE)
-                    } else {
-                        panel
-                    };
-                    style::paint_tab_divider(&painter, rect, &chrome);
-                    let icon = Rect::from_center_size(
-                        Pos2::new(rect.min.x + pad + icon_size / 2.0, rect.center().y),
-                        Vec2::splat(icon_size),
-                    );
-                    icons.push((icon, std::path::PathBuf::from(name)));
-                    painter.galley(Pos2::new(icon.max.x + style::GAP, rect.center().y - galley.size().y / 2.0), galley, color);
-                    let close_c = Pos2::new(rect.max.x - pad * 0.5 - close_w / 2.0, rect.center().y);
-                    let close = Rect::from_center_size(close_c, Vec2::splat(close_w));
-                    let on_close = resp.hover_pos().is_some_and(|p| close.contains(p));
-                    if resp.hovered() || is_current {
-                        style::glyph_button(&painter, Glyph::Cross, close_c, height, &chrome, surface, on_close);
-                    }
-                    let close_tab = format!("lua pcall(vim.cmd.tabclose, vim.api.nvim_tabpage_get_number({tab}))");
+                    let on_close = hover.is_some_and(|p| hit.slot.contains(p));
                     if resp.middle_clicked() || (resp.clicked() && on_close) {
-                        command = Some(close_tab);
+                        command = Some(format!("lua pcall(vim.cmd.tabclose, vim.api.nvim_tabpage_get_number({tab}))"));
                     } else if resp.clicked() {
                         command = Some(format!("lua pcall(vim.api.nvim_set_current_tabpage, {tab})"));
                     }
@@ -367,6 +363,92 @@ impl VimApp {
         (changed, escaped)
     }
 }
+
+/// Whether the tab pages' strip shows: `'showtabline'` 0 never, 1 with two or more tab pages,
+/// 2 always; and only `allowed` (the pills aren't in the title bar).
+pub(super) fn strip_shown(showtabline: i64, tab_pages: usize, allowed: bool) -> bool {
+    allowed
+        && match showtabline {
+            0 => false,
+            2 => tab_pages >= 1,
+            _ => tab_pages >= 2,
+        }
+}
+
+/// What the strips' tabs are drawn with (the agent panel's, the bottom panel's and the tab
+/// pages'): the theme, the color of what the current tab joins, whether the strip's
+/// owner has the keyboard (the accent), and the strip's height.
+pub(super) struct TabLook<'a> {
+    pub chrome: &'a Chrome,
+    pub content_bg: egui::Color32,
+    pub focused: bool,
+    pub height: f32,
+}
+
+/// Where a painted tab's "×" slot is, and whether the pointer is on the tab.
+pub(super) struct TabHit {
+    pub slot: Rect,
+    pub hovered: bool,
+}
+
+/// A tab's width: its padding, icon, gap, title and the slot after it (the dot, or the
+/// "×" while hovered).
+pub(super) fn tab_width(icon_w: f32, title_w: f32, slot_w: f32) -> f32 {
+    (style::TAB_PAD + icon_w + style::GAP + 4.0 + slot_w + style::TAB_PAD * 0.5 + title_w).round()
+}
+
+/// `text` as one line in `color`, ending in "…" where it would pass `max`.
+pub(super) fn cut_title(painter: &egui::Painter, text: &str, font: &egui::FontId, color: egui::Color32, max: f32) -> std::sync::Arc<egui::Galley> {
+    let mut title = painter.layout_no_wrap(text.to_owned(), font.clone(), color);
+    let mut keep = text.chars().count();
+    while title.size().x > max && keep > 1 {
+        keep -= 1;
+        title = painter.layout_no_wrap(truncate_chars(text, keep), font.clone(), color);
+    }
+    title
+}
+
+/// One tab of a strip, in `rect`: the current one joined to the content below (the accent
+/// while `look.focused`), a divider after it, the icon (`draw_icon`, given its square and
+/// the text color), the title, and at the end "×" while the pointer is on the tab, else
+/// `dot` if there is one. `hover` is the pointer, if over the strip.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_tab(
+    painter: &egui::Painter,
+    look: &TabLook,
+    rect: Rect,
+    current: bool,
+    title: std::sync::Arc<egui::Galley>,
+    color: egui::Color32,
+    icon_w: f32,
+    hover: Option<Pos2>,
+    dot: Option<egui::Color32>,
+    draw_icon: &mut dyn FnMut(&egui::Painter, Rect, egui::Color32),
+) -> TabHit {
+    let chrome = look.chrome;
+    let pad = style::TAB_PAD;
+    if current {
+        style::paint_current_tab(painter, rect, look.focused, chrome, look.content_bg);
+    }
+    style::paint_tab_divider(painter, rect, chrome);
+    let icon = Rect::from_min_size(Pos2::new(rect.min.x + pad, rect.center().y - icon_w / 2.0), Vec2::splat(icon_w));
+    draw_icon(painter, icon, color);
+    painter.galley(Pos2::new(icon.max.x + style::GAP, rect.center().y - title.size().y / 2.0), title, color);
+    let close_w = style::button_size(look.height);
+    let slot = Rect::from_center_size(Pos2::new(rect.max.x - pad * 0.5 - close_w / 2.0, rect.center().y), Vec2::splat(close_w));
+    let hovered = hover.is_some_and(|p| rect.contains(p));
+    if hovered {
+        let on = hover.is_some_and(|p| slot.contains(p));
+        let surface = style::tab_fill(chrome, look.content_bg, current, look.focused);
+        style::glyph_button(painter, Glyph::Cross, slot.center(), look.height, chrome, surface, on);
+    } else if let Some(c) = dot {
+        painter.circle_filled(slot.center(), TAB_DOT, c);
+    }
+    TabHit { slot, hovered }
+}
+
+/// The radius of the dot a tab shows in place of its "×".
+const TAB_DOT: f32 = 3.0;
 
 /// A button at the right of a window's file-tab row.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -501,6 +583,7 @@ impl TabLabel {
 #[cfg(test)]
 mod tests {
     use super::TabLabel;
+    use egui::{Pos2, Rect, Vec2};
 
     #[test]
     fn terminal_tabs_layout() {
@@ -552,6 +635,64 @@ mod tests {
             harness.run_steps(6);
             harness.snapshot(format!("current_file_toggle_{name}"));
             results.extend_harness(&mut harness);
+        }
+        results.unwrap();
+    }
+
+    /// 'showtabline': 0 never, 1 with two or more tab pages, 2 always; not while the pills
+    /// are in the title bar.
+    #[test]
+    fn the_strip_follows_showtabline() {
+        use super::strip_shown;
+        assert!(!strip_shown(0, 3, true) && !strip_shown(0, 1, true));
+        assert!(!strip_shown(1, 1, true) && strip_shown(1, 2, true));
+        assert!(strip_shown(2, 1, true) && strip_shown(2, 3, true));
+        assert!(!strip_shown(1, 3, false) && !strip_shown(2, 1, false));
+    }
+
+    #[test]
+    fn a_tab_is_as_wide_as_its_parts() {
+        // padding, icon, gap, 4, the slot, half a padding, the title: 10 + 15 + 6 + 4 + 21 + 5 + 80.
+        assert_eq!(super::tab_width(15.0, 80.0, 21.0), 141.0);
+    }
+
+    /// The tab pages' strip as `show_tabline` lays it out: "×" only on the tab under the
+    /// pointer, a dot on a modified one otherwise, the accent only while focused, long titles
+    /// cut to their share.
+    #[test]
+    fn the_tab_pages_strip() {
+        use crate::style;
+        use egui_kittest::Harness;
+        let mut results = egui_kittest::SnapshotResults::new();
+        for (theme, chrome, _) in crate::style::tests::themes() {
+            for (name, focused, hover) in [("focused", true, None), ("unfocused", false, None), ("hover", true, Some(Pos2::new(120.0, 14.0)))] {
+                let mut harness = Harness::builder().with_size(Vec2::new(520.0, 28.0)).with_pixels_per_point(2.0).with_render_cursor(false).wgpu().build_ui(move |ui| {
+                    let screen = ui.ctx().content_rect();
+                    ui.painter().rect_filled(screen, 0.0, chrome.bg);
+                    let painter = ui.painter().clone();
+                    painter.rect_filled(screen, 0.0, chrome.panel);
+                    let font = egui::FontId::proportional(12.0);
+                    let look = super::TabLook { chrome: &chrome, content_bg: chrome.bg, focused, height: screen.height() };
+                    let icon_w = super::file_icon_size(&font);
+                    let titles = ["main.rs", "a_rather_long_file_name_for_a_tab.rs", "notes.md"];
+                    let title_max = ((screen.width() - screen.height()) / 3.0 - super::tab_width(icon_w, 0.0, style::button_size(screen.height()))).max(font.size * 1.5);
+                    let mut x = screen.min.x;
+                    for (n, t) in titles.iter().enumerate() {
+                        let color = chrome.text(n == 0 && focused);
+                        let title = super::cut_title(&painter, t, &font, color, title_max);
+                        let rect = Rect::from_min_size(Pos2::new(x, screen.min.y), Vec2::new(super::tab_width(icon_w, title.size().x, style::button_size(screen.height())), screen.height()));
+                        x = rect.max.x;
+                        // The first is current; the third has unsaved changes.
+                        let dot = (n == 2).then_some(color);
+                        super::paint_tab(&painter, &look, rect, n == 0, title, color, icon_w, hover, dot, &mut |p, icon, color| {
+                            p.rect_filled(icon, style::RADIUS, color);
+                        });
+                    }
+                });
+                harness.run();
+                harness.snapshot(format!("tab_pages_strip_{name}_{theme}"));
+                results.extend_harness(&mut harness);
+            }
         }
         results.unwrap();
     }

@@ -35,7 +35,8 @@ hide_statusline = true        # draw the panel over its status line
 [window]
 custom_titlebar = true        # macOS: a thin title bar in the theme's panel color (restart)
 titlebar_height = 32          # 16 to 60 (restart)
-tabs = "wide"                 # tab pages in the title bar: "wide" (equal pills) or "compact"
+tabs = "strip"                # tab pages: "strip" (tabs over the editor, as 'showtabline' says), or in
+                              # the title bar as pills: "wide" (equal pills) or "compact"
 
 [explorer]                    # the file explorer (⌘B toggles it, ⇧⌘E focuses it)
 enabled = true                # restart

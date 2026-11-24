@@ -405,30 +405,21 @@ pub(super) fn paint_strip(
     let plus = if plus.min.x > tabs_end + 2.0 { Rect::from_min_size(Pos2::new(tabs_end + 2.0, strip.min.y), plus.size()) } else { plus };
     let tabs_room = Rect::from_x_y_ranges(strip.min.x..=tabs_end.max(strip.min.x), strip.y_range());
     let tab_painter = painter.with_clip_rect(painter.clip_rect().intersect(tabs_room));
+    let look = super::tabs::TabLook { chrome, content_bg: model.content_bg, focused, height: strip.height() };
+    let hover = painter.ctx().input(|i| i.pointer.hover_pos()).filter(|p| tabs_room.contains(*p));
     for ((id, current, color, galley), rect) in galleys.into_iter().zip(tabs) {
-        if current {
-            style::paint_current_tab(&tab_painter, rect, focused, chrome, model.content_bg);
-        }
-        style::paint_tab_divider(&tab_painter, rect, chrome);
-        let text_y = rect.center().y - galley.size().y / 2.0;
-        // Prompt glyph "›_".
-        let c = Pos2::new(rect.min.x + pad + glyph_w * 0.3, rect.center().y);
-        let s = glyph_w * 0.22;
-        let glyph_color = if current { mix(mode_color("terminal"), fg, style::TINT) } else { color };
-        let stroke = egui::Stroke::new(style::STROKE, glyph_color);
-        tab_painter.line_segment([c + Vec2::new(-s, -s), c + Vec2::new(0.0, 0.0)], stroke);
-        tab_painter.line_segment([c + Vec2::new(0.0, 0.0), c + Vec2::new(-s, s)], stroke);
-        tab_painter.hline(c.x + s * 0.6..=c.x + s * 2.4, c.y + s, stroke);
-        tab_painter.galley(Pos2::new(rect.min.x + pad + glyph_w + style::GAP, text_y), galley, color);
-        // "×" while hovered: closes this terminal.
-        if style::hovered(&tab_painter, rect) {
-            let c = Pos2::new(rect.max.x - pad * 0.5 - close_w / 2.0, rect.center().y);
-            let on = style::hovered(&tab_painter, Rect::from_center_size(c, Vec2::splat(close_w)));
-            let surface = style::tab_fill(chrome, model.content_bg, current, focused);
-            let close = style::glyph_button(&tab_painter, Glyph::Cross, c, strip.height(), chrome, surface, on);
-            if tabs_room.contains_rect(close) {
-                hits.closes.push((close, id));
-            }
+        // The shared tab (`paint_tab`) with a prompt glyph "›_" for its icon; "×" while hovered closes it.
+        let hit = super::tabs::paint_tab(&tab_painter, &look, rect, current, galley, color, glyph_w, hover, None, &mut |p, icon, color| {
+            let c = Pos2::new(icon.min.x + glyph_w * 0.3, icon.center().y);
+            let s = glyph_w * 0.22;
+            let glyph_color = if current { mix(mode_color("terminal"), fg, style::TINT) } else { color };
+            let stroke = egui::Stroke::new(style::STROKE, glyph_color);
+            p.line_segment([c + Vec2::new(-s, -s), c + Vec2::new(0.0, 0.0)], stroke);
+            p.line_segment([c + Vec2::new(0.0, 0.0), c + Vec2::new(-s, s)], stroke);
+            p.hline(c.x + s * 0.6..=c.x + s * 2.4, c.y + s, stroke);
+        });
+        if hit.hovered && tabs_room.contains_rect(hit.slot) {
+            hits.closes.push((hit.slot, id));
         }
         if rect.min.x < tabs_end {
             hits.tabs.push((rect.intersect(tabs_room), id));

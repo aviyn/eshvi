@@ -28,7 +28,8 @@
 //! [window]
 //! custom_titlebar = true        # macOS: thin title bar in the theme's panel color
 //! titlebar_height = 32
-//! tabs = "wide"                 # tab pages in the title bar: "wide" (equal pills) or "compact"
+//! tabs = "strip"                # tab pages: "strip" (tabs over the editor; shown by 'showtabline'), or in the
+//!                               # title bar as pills: "wide" (equal pills) or "compact"
 //!
 //! [explorer]                    # native file explorer (Cmd+B toggles, Cmd+Shift+E focuses)
 //! enabled = true
@@ -291,12 +292,15 @@ impl Default for WindowConfig {
     }
 }
 
-/// How the title bar lays out Neovim's tab pages.
+/// Where Neovim's tab pages are and how they look.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TitleTabs {
-    /// Equal pills sharing the bar (up to a width).
+    /// Tabs in a strip over the editor, like the other strips (the title bar keeps its one
+    /// title pill).
     #[default]
+    Strip,
+    /// Equal pills sharing the title bar (up to a width).
     Wide,
     /// Pills as wide as their names.
     Compact,
@@ -996,7 +1000,10 @@ mod tests {
         assert_eq!((c2.agent.diff, c2.git.diff), (DiffView::Buffer, DiffView::Native));
         let c2 = parse("[git]\ndiff = \"buffer\"").unwrap();
         assert_eq!((c2.agent.diff, c2.git.diff), (DiffView::Native, DiffView::Buffer));
-        assert_eq!(Config::default().window.tabs, TitleTabs::Wide);
+        assert_eq!(Config::default().window.tabs, TitleTabs::Strip);
+        assert_eq!(parse("[window]\ntabs = \"wide\"").unwrap().window.tabs, TitleTabs::Wide);
+        assert_eq!(parse("[window]\ntabs = \"strip\"").unwrap().window.tabs, TitleTabs::Strip);
+        assert!(parse("[window]\ntabs = \"row\"").is_err());
         assert_eq!(parse("[window]\ntabs = \"compact\"").unwrap().window.tabs, TitleTabs::Compact);
         assert!(!parse("[menu]\nenabled = false").unwrap().menu.enabled);
         assert_eq!(Config::default().neovim.config, NeovimConfigKind::Own);
