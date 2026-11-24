@@ -4,7 +4,7 @@ members = ["crates/grid", "crates/nvim-bridge", "crates/app", "crates/svtrace", 
 
 [workspace.package]
 edition = "2021"
-version = "0.1.10"
+version = "0.1.11"
 license = "MIT"
 
 [workspace.dependencies]
